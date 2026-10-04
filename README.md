@@ -1,27 +1,27 @@
-# CCTV Grid Map Detection
+# CCTV Grid Map
 
-Prototipe web untuk pengelolaan CCTV bandara melalui denah SVG interaktif.
+Prototipe pengelolaan CCTV bandara dengan denah SVG interaktif.
 
 ## Menjalankan aplikasi
 
-Buka `index.html` menggunakan browser modern. Aplikasi tidak memerlukan instalasi dependensi.
+Buka `index.html` di browser. Tidak ada dependensi yang perlu dipasang.
 
 ## Akun demo
 
 - Admin: `admin@airport.local` / `Admin123!`
-- User: `user@airport.local` / `User123!`
+- Pengguna: `user@airport.local` / `User123!`
 
 ## Fitur
 
-- Dashboard operasional
+- Ringkasan kondisi perangkat
 - Peta CCTV berbasis SVG
 - Pengaturan posisi dan arah pandang kamera
 - Inventaris perangkat
-- Role admin dan user
+- Hak akses admin dan pengguna
 - Laporan gangguan serta riwayat aktivitas
 - Impor denah SVG dari Figma
-- Konfigurasi NVR dan URL live stream
+- Konfigurasi NVR dan URL tayangan
 
 ## Catatan
 
-Versi ini merupakan prototipe lokal. Data disimpan di browser. Autentikasi produksi, database PostgreSQL, serta integrasi NVR perlu dijalankan melalui backend yang aman.
+Versi ini berjalan secara lokal dan menyimpan data di browser. Untuk penggunaan produksi, pindahkan autentikasi dan data ke backend, gunakan PostgreSQL, lalu hubungkan NVR melalui jaringan internal.

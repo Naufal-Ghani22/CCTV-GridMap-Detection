@@ -113,7 +113,7 @@ function escapeHtml(value) {
 
 function formatDate(value, includeTime = false) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value || '—';
+  if (Number.isNaN(date.getTime())) return value || 'Belum ada';
   return new Intl.DateTimeFormat('id-ID', includeTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'long' }).format(date);
 }
 
@@ -242,7 +242,7 @@ function renderDashboard() {
   const networkLabels = { unknown: 'Belum diuji', connected: 'Terhubung', offline: 'Tidak terhubung' };
   $('#dashNetwork').textContent = networkLabels[settings.networkStatus] || networkLabels.unknown;
   $('#dashMapSource').textContent = settings.customMap ? 'SVG impor' : 'Denah bawaan';
-  $('#dashLastActivity').textContent = historyItems[0] ? formatDate(historyItems[0].createdAt, true) : '—';
+  $('#dashLastActivity').textContent = historyItems[0] ? formatDate(historyItems[0].createdAt, true) : 'Belum ada';
 }
 
 function openDetail(id, shouldRender = true) {
@@ -376,8 +376,8 @@ function renderDeviceTable() {
       <td>${escapeHtml(camera.area)}<small>${escapeHtml(camera.location)}</small></td>
       <td>${escapeHtml(camera.brand)} ${escapeHtml(camera.model)}<small>${escapeHtml(camera.serial)}</small></td>
       <td><span class="state-pill ${camera.status}">${escapeHtml(statusText(camera.status))}</span></td>
-      <td class="mono">${escapeHtml(camera.ip || '—')}</td>
-      <td><div class="table-actions"><button class="table-button" data-action="locate" data-id="${camera.id}">Peta</button><button class="table-button" data-action="live" data-id="${camera.id}">Live</button>${isAdmin() ? `<button class="table-button" data-action="edit" data-id="${camera.id}">Ubah</button>` : ''}</div></td>
+      <td class="mono">${escapeHtml(camera.ip || 'Belum diatur')}</td>
+      <td><div class="table-actions"><button class="table-button" data-action="locate" data-id="${camera.id}">Peta</button><button class="table-button" data-action="live" data-id="${camera.id}">Tayangan</button>${isAdmin() ? `<button class="table-button" data-action="edit" data-id="${camera.id}">Ubah</button>` : ''}</div></td>
     </tr>`).join('');
   $('#deviceEmpty').classList.toggle('hidden', filtered.length > 0);
 }
@@ -420,7 +420,7 @@ function renderProfile() {
   const { name, role, division } = settings.profile;
   $('#profileName').firstChild.textContent = name;
   $('#profileAvatar').textContent = name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
-  $('#roleName').textContent = `${role === 'admin' ? 'Administrator' : 'User'} · ${division}`;
+  $('#roleName').textContent = `${role === 'admin' ? 'Administrator' : 'Pengguna'} · ${division}`;
   document.body.classList.toggle('user-role', role !== 'admin');
   $$('.admin-only').forEach((element) => element.classList.toggle('hidden', role !== 'admin'));
   if (role !== 'admin' && activeView === 'settings') showView('map');
@@ -450,13 +450,22 @@ function renderAll() {
 }
 
 const pageMeta = {
-  home: ['Ringkasan operasional', 'Dashboard'],
+  home: ['Terminal 1 / Lantai 2', 'Ringkasan'],
   map: ['Terminal 1 / Lantai 2', 'Peta CCTV'],
   devices: ['Inventaris', 'Perangkat CCTV'],
   reports: ['Operasional', 'Laporan gangguan'],
   history: ['Audit', 'Riwayat aktivitas'],
   settings: ['Administrator', 'Pengaturan sistem']
 };
+
+function setMobileMenu(open) {
+  const sidebar = $('.sidebar');
+  const toggle = $('#mobileMenuToggle');
+  if (!sidebar || !toggle) return;
+  sidebar.classList.toggle('menu-open', open);
+  toggle.setAttribute('aria-expanded', String(open));
+  toggle.querySelector('span').textContent = open ? 'Tutup' : 'Menu';
+}
 
 function showView(view) {
   if (view === 'settings' && !isAdmin()) {
@@ -473,6 +482,7 @@ function showView(view) {
   $('#pageContext').textContent = pageMeta[view][0];
   $('#pageTitle').textContent = pageMeta[view][1];
   $('#reportListButton').classList.toggle('hidden', view !== 'map');
+  setMobileMenu(false);
   if (view === 'devices') renderDeviceTable();
   if (view === 'reports') renderReports();
   if (view === 'history') renderHistory();
@@ -602,7 +612,7 @@ function openLive(id) {
   const updateClock = () => { $('#liveClock').textContent = new Intl.DateTimeFormat('id-ID', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date()); };
   updateClock();
   liveClockTimer = setInterval(updateClock, 1000);
-  addHistory('Membuka live view', camera.id);
+  addHistory('Membuka tayangan', camera.id);
 }
 
 function loadLiveStream() {
@@ -614,7 +624,7 @@ function loadLiveStream() {
   video.pause();
   video.removeAttribute('src');
   video.load();
-  $('#liveFallbackText').textContent = camera.streamUrl ? 'Menghubungkan ke stream lokal…' : 'Mode simulasi · URL stream belum diatur';
+  $('#liveFallbackText').textContent = camera.streamUrl ? 'Menghubungkan ke tayangan lokal…' : 'Simulasi · URL tayangan belum diatur';
   if (!camera.streamUrl) return;
   video.src = camera.streamUrl;
   video.onloadeddata = () => {
@@ -623,7 +633,7 @@ function loadLiveStream() {
   };
   video.onerror = () => {
     frame.classList.remove('has-video');
-    $('#liveFallbackText').textContent = 'Stream tidak dapat diputar. Periksa URL dan format video.';
+    $('#liveFallbackText').textContent = 'Tayangan tidak dapat diputar. Periksa URL dan format video.';
   };
   video.load();
 }
@@ -699,9 +709,13 @@ function restoreSession() {
   }
 }
 
+$('#mobileMenuToggle').addEventListener('click', () => setMobileMenu(!$('.sidebar').classList.contains('menu-open')));
 $$('.nav-item').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
 $('#reportListButton').addEventListener('click', () => showView('reports'));
-$('#connectionButton').addEventListener('click', () => isAdmin() ? showView('settings') : showToast(`Jaringan: ${$('#connectionText').textContent}`));
+$('#connectionButton').addEventListener('click', () => {
+  setMobileMenu(false);
+  isAdmin() ? showView('settings') : showToast(`Jaringan: ${$('#connectionText').textContent}`);
+});
 $('#adminToggle').addEventListener('click', () => { setEditMode(!editMode); showToast(editMode ? 'Mode edit aktif' : 'Perubahan peta disimpan'); });
 $('#addCamera').addEventListener('click', () => openDeviceDialog());
 $('#addDeviceList').addEventListener('click', () => openDeviceDialog());
@@ -842,9 +856,10 @@ $('#confirmForm').addEventListener('submit', (event) => {
 });
 
 $('#profileButton').addEventListener('click', () => {
+  setMobileMenu(false);
   $('#accountName').value = settings.profile.name;
   $('#accountEmail').value = settings.profile.email;
-  $('#accountRole').value = settings.profile.role === 'admin' ? 'Administrator' : 'User';
+  $('#accountRole').value = settings.profile.role === 'admin' ? 'Administrator' : 'Pengguna';
   $('#accountDivision').value = settings.profile.division;
   $('#profileDialog').showModal();
 });
@@ -909,7 +924,7 @@ $('#streamForm').addEventListener('submit', (event) => {
   camera.streamUrl = $('#cameraStream').value.trim();
   camera.updated = 'Konfigurasi jaringan diperbarui';
   saveState();
-  addHistory('Memperbarui stream', `${camera.id} · ${camera.ip || 'tanpa IP'}`);
+  addHistory('Memperbarui tayangan', `${camera.id} · ${camera.ip || 'tanpa IP'}`);
   renderAll();
   showToast(`Konfigurasi ${camera.id} disimpan`);
 });
