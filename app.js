@@ -2,18 +2,30 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const STORAGE_KEY = 'cctv-map-state-v2';
 const SESSION_KEY = 'cctv-map-session';
+const LOCAL_CAMERA_ID = 'CCTV-T1-021';
+const LOCAL_CAMERA_IP = '192.168.1.64';
+const LEGACY_LOCAL_CAMERA_IP = '192.168.10.121';
+const AREA_OPTIONS = ['Checkin Keberangkatan', 'Kedatangan', 'Boarding'];
+const LEGACY_DEMO_AREAS = {
+  'CCTV-T1-021': ['Koridor utama', 'Boarding', 'HKV-T1-0021'],
+  'CCTV-T1-007': ['Ruang operasi', 'Checkin Keberangkatan', 'DHA-T1-0007'],
+  'CCTV-T1-013': ['Gate B1–B6', 'Boarding', 'HKV-T1-0013'],
+  'CCTV-T1-016': ['Koridor utama', 'Kedatangan', 'DHA-T1-0016'],
+  'CCTV-T1-019': ['Area bagasi', 'Kedatangan', 'HKV-T1-0019'],
+  'CCTV-T1-024': ['Lounge dan kafe', 'Boarding', 'DHA-T1-0024']
+};
 const ACCOUNTS = [
   { email: 'admin@airport.local', passwordHash: '3eb3fe66b31e3b4d10fa70b5cad49c7112294af6ae4e476a1c405155d45aa121', name: 'Adi Rachman', role: 'admin', division: 'Teknologi Informasi' },
   { email: 'user@airport.local', passwordHash: 'bc5848f227cc161eb5f68dfe98cb13110a9c843ce69e953a88107d865583d397', name: 'Nadia Putri', role: 'user', division: 'Operasional' }
 ];
 
 const defaultCameras = [
-  { id: 'CCTV-T1-021', area: 'Koridor utama', location: 'Dekat Gate B3', brand: 'Hikvision', model: 'DS-2CD2143G2-I', serial: 'HKV-T1-0021', color: 'Putih', shape: 'Dome', installed: '2024-03-12', ip: '192.168.10.121', streamUrl: '', angle: 315, status: 'normal', x: 51, y: 37, updated: '4 menit lalu' },
-  { id: 'CCTV-T1-007', area: 'Ruang operasi', location: 'Pintu masuk ruang operasi', brand: 'Dahua', model: 'IPC-HDBW2431E', serial: 'DHA-T1-0007', color: 'Putih', shape: 'Dome', installed: '2024-01-28', ip: '192.168.10.107', streamUrl: '', angle: 180, status: 'normal', x: 26, y: 25, updated: '8 menit lalu' },
-  { id: 'CCTV-T1-013', area: 'Gate B1–B6', location: 'Area tunggu Gate B4', brand: 'Hikvision', model: 'DS-2CD2143G2-I', serial: 'HKV-T1-0013', color: 'Putih', shape: 'Dome', installed: '2024-02-06', ip: '192.168.10.113', streamUrl: '', angle: 90, status: 'warning', x: 76, y: 27, updated: 'Gangguan 12 menit lalu' },
-  { id: 'CCTV-T1-016', area: 'Koridor utama', location: 'Akses menuju bagasi', brand: 'Dahua', model: 'IPC-HDW2431T-AS', serial: 'DHA-T1-0016', color: 'Putih', shape: 'Bullet', installed: '2023-11-21', ip: '192.168.10.116', streamUrl: '', angle: 180, status: 'offline', x: 51, y: 64, updated: 'Offline sejak 09:42' },
-  { id: 'CCTV-T1-019', area: 'Area bagasi', location: 'Belt bagasi 2', brand: 'Hikvision', model: 'DS-2CD2143G2-I', serial: 'HKV-T1-0019', color: 'Putih', shape: 'Dome', installed: '2024-03-10', ip: '192.168.10.119', streamUrl: '', angle: 45, status: 'warning', x: 26, y: 76, updated: 'Gangguan 21 menit lalu' },
-  { id: 'CCTV-T1-024', area: 'Lounge dan kafe', location: 'Akses masuk kafe', brand: 'Dahua', model: 'IPC-HDBW2431E', serial: 'DHA-T1-0024', color: 'Putih', shape: 'Dome', installed: '2024-04-18', ip: '192.168.10.124', streamUrl: '', angle: 270, status: 'normal', x: 77, y: 76, updated: '6 menit lalu' }
+  { id: 'CCTV-T1-021', area: 'Boarding', location: 'Dekat Gate B3', brand: 'Hikvision', model: 'DS-2CD2143G2-I', serial: 'HKV-T1-0021', color: 'Putih', shape: 'Dome', installed: '2024-03-12', ip: LOCAL_CAMERA_IP, streamUrl: '', angle: 315, status: 'normal', x: 51, y: 37, updated: '4 menit lalu' },
+  { id: 'CCTV-T1-007', area: 'Checkin Keberangkatan', location: 'Pintu masuk ruang operasi', brand: 'Dahua', model: 'IPC-HDBW2431E', serial: 'DHA-T1-0007', color: 'Putih', shape: 'Dome', installed: '2024-01-28', ip: '192.168.10.107', streamUrl: '', angle: 180, status: 'normal', x: 26, y: 25, updated: '8 menit lalu' },
+  { id: 'CCTV-T1-013', area: 'Boarding', location: 'Area tunggu Gate B4', brand: 'Hikvision', model: 'DS-2CD2143G2-I', serial: 'HKV-T1-0013', color: 'Putih', shape: 'Dome', installed: '2024-02-06', ip: '192.168.10.113', streamUrl: '', angle: 90, status: 'warning', x: 76, y: 27, updated: 'Gangguan 12 menit lalu' },
+  { id: 'CCTV-T1-016', area: 'Kedatangan', location: 'Akses menuju bagasi', brand: 'Dahua', model: 'IPC-HDW2431T-AS', serial: 'DHA-T1-0016', color: 'Putih', shape: 'Bullet', installed: '2023-11-21', ip: '192.168.10.116', streamUrl: '', angle: 180, status: 'offline', x: 51, y: 64, updated: 'Offline sejak 09:42' },
+  { id: 'CCTV-T1-019', area: 'Kedatangan', location: 'Belt bagasi 2', brand: 'Hikvision', model: 'DS-2CD2143G2-I', serial: 'HKV-T1-0019', color: 'Putih', shape: 'Dome', installed: '2024-03-10', ip: '192.168.10.119', streamUrl: '', angle: 45, status: 'warning', x: 26, y: 76, updated: 'Gangguan 21 menit lalu' },
+  { id: 'CCTV-T1-024', area: 'Boarding', location: 'Akses masuk kafe', brand: 'Dahua', model: 'IPC-HDBW2431E', serial: 'DHA-T1-0024', color: 'Putih', shape: 'Dome', installed: '2024-04-18', ip: '192.168.10.124', streamUrl: '', angle: 270, status: 'normal', x: 77, y: 76, updated: '6 menit lalu' }
 ];
 
 const defaultReports = [
@@ -50,9 +62,12 @@ function dateToISO(value) {
 function migrateCamera(camera, index) {
   const deviceParts = String(camera.device || '').split(' ');
   const physicalParts = String(camera.color || '').split(/[·,]/).map((part) => part.trim());
+  const id = camera.id || `CCTV-T1-${String(index + 1).padStart(3, '0')}`;
+  const savedIp = camera.ip || '';
+  const previousDemoArea = LEGACY_DEMO_AREAS[id];
   return {
-    id: camera.id || `CCTV-T1-${String(index + 1).padStart(3, '0')}`,
-    area: camera.area || 'Area belum ditentukan',
+    id,
+    area: previousDemoArea && camera.area === previousDemoArea[0] && camera.serial === previousDemoArea[2] ? previousDemoArea[1] : camera.area || 'Area belum ditentukan',
     location: camera.location || 'Lokasi belum diisi',
     brand: camera.brand || deviceParts.shift() || 'Belum diisi',
     model: camera.model || deviceParts.join(' ') || 'Belum diisi',
@@ -60,7 +75,8 @@ function migrateCamera(camera, index) {
     color: camera.brand ? camera.color : physicalParts[0] || 'Belum diisi',
     shape: camera.shape || physicalParts[1] || 'Dome',
     installed: dateToISO(camera.installed),
-    ip: camera.ip || '',
+    ip: id === LOCAL_CAMERA_ID && savedIp === LEGACY_LOCAL_CAMERA_IP ? LOCAL_CAMERA_IP : savedIp,
+    lastPing: camera.lastPing || null,
     streamUrl: camera.streamUrl || '',
     angle: Number.isFinite(camera.angle) ? camera.angle : Number(camera.direction?.match(/(\d+)°/)?.[1] || 0),
     status: camera.status || 'normal',
@@ -74,17 +90,19 @@ const savedState = loadState();
 let legacyCameras = null;
 try { legacyCameras = JSON.parse(localStorage.getItem('cctv-map-cameras') || 'null'); } catch (error) { legacyCameras = null; }
 
-let cameras = (savedState?.cameras || legacyCameras || defaultCameras).map(migrateCamera);
-let reports = savedState?.reports || defaultReports;
-let historyItems = savedState?.history || defaultHistory;
-let settings = savedState?.settings || {
-  profile: { name: 'Adi Rachman', email: 'admin@airport.local', role: 'admin', division: 'Teknologi Informasi' },
+localStorage.removeItem(STORAGE_KEY);
+localStorage.removeItem('cctv-map-cameras');
+let cameras = [];
+let reports = [];
+let historyItems = [];
+let settings = {
+  profile: { name: '', email: '', role: '', division: '' },
   nvrAddress: 'http://192.168.10.20',
   networkStatus: 'unknown',
   networkCheckedAt: '',
   customMap: ''
 };
-settings.profile = { email: 'admin@airport.local', ...settings.profile };
+settings.profile = { email: '', ...settings.profile };
 
 let selectedId = null;
 let activeView = 'home';
@@ -92,6 +110,8 @@ let editMode = false;
 let pendingConfirm = null;
 let liveCameraId = null;
 let liveClockTimer = null;
+let livePlaybackUrl = null;
+let liveRequestId = 0;
 let toastTimer = null;
 
 const cameraLayer = $('#cameraLayer');
@@ -100,7 +120,14 @@ const directionRange = $('#directionRange');
 const defaultMapMarkup = $('#floorPlanHost').innerHTML;
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ cameras, reports, history: historyItems, settings }));
+  // CCTV data is centrally stored by PostgreSQL.
+}
+
+async function loadCameras() {
+  const response = await fetch('/api/cameras');
+  if (!response.ok) throw new Error('Data CCTV tidak dapat dimuat.');
+  cameras = (await response.json()).map(migrateCamera);
+  renderAll();
 }
 
 function isAdmin() {
@@ -503,7 +530,15 @@ function openDeviceDialog(id = null) {
   $('#formId').readOnly = Boolean(camera);
   $('#formId').value = camera?.id || nextCameraId();
   $('#formStatus').value = camera?.status || 'normal';
-  $('#formArea').value = camera?.area || '';
+  $('#formArea option[data-legacy]')?.remove();
+  if (camera?.area && !AREA_OPTIONS.includes(camera.area)) {
+    const previousArea = new Option(`Area lama: ${camera.area}. Pilih area baru`, '', true, true);
+    previousArea.disabled = true;
+    previousArea.dataset.legacy = 'true';
+    $('#formArea').prepend(previousArea);
+  } else {
+    $('#formArea').value = camera?.area || '';
+  }
   $('#formLocation').value = camera?.location || '';
   $('#formBrand').value = camera?.brand || '';
   $('#formModel').value = camera?.model || '';
@@ -567,10 +602,43 @@ function advanceReport(id) {
 
 function fillStreamForm() {
   const camera = cameras.find((item) => item.id === $('#networkCamera').value) || cameras[0];
-  if (!camera) return;
+  if (!camera) {
+    renderPingStatus();
+    return;
+  }
   $('#networkCamera').value = camera.id;
   $('#cameraIp').value = camera.ip || '';
   $('#cameraStream').value = camera.streamUrl || '';
+  renderPingStatus(camera.lastPing?.ip === camera.ip ? camera.lastPing : null);
+}
+
+function isValidIpv4(ip) {
+  const parts = ip.split('.');
+  return parts.length === 4 && parts.every((part) => /^(0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255);
+}
+
+function renderPingStatus(result = null, detail = '') {
+  const box = $('#cameraPingStatus');
+  const label = $('#cameraPingLabel');
+  const description = $('#cameraPingDetail');
+  const state = result?.status || 'idle';
+  box.dataset.state = state;
+  label.textContent = {
+    idle: 'Belum diuji',
+    loading: 'Menguji koneksi',
+    online: 'Aktif',
+    offline: 'Tidak merespons',
+    invalid: 'Alamat IP tidak valid',
+    error: 'Layanan ping bermasalah'
+  }[state] || 'Belum diuji';
+  if (state === 'online') {
+    const latency = Number.isFinite(result.latencyMs) ? `${result.latencyMs} ms` : 'latensi tidak tersedia';
+    description.textContent = `${result.ip} merespons dalam ${latency}. Terakhir diuji ${formatDate(result.checkedAt, true)}.`;
+  } else if (state === 'offline') {
+    description.textContent = `${result.ip} tidak merespons. Terakhir diuji ${formatDate(result.checkedAt, true)}. Periksa daya CCTV, kabel jaringan, subnet, dan alamat IP.`;
+  } else {
+    description.textContent = detail || 'Masukkan alamat IP lalu tekan Ping IP.';
+  }
 }
 
 function sanitizeSvg(source) {
@@ -615,36 +683,75 @@ function openLive(id) {
   addHistory('Membuka tayangan', camera.id);
 }
 
-function loadLiveStream() {
-  const camera = cameras.find((item) => item.id === liveCameraId);
-  if (!camera) return;
+function stopLivePlayback() {
   const video = $('#liveVideo');
-  const frame = $('#liveFrame');
-  frame.classList.remove('has-video');
+  video.onloadeddata = null;
+  video.onerror = null;
   video.pause();
   video.removeAttribute('src');
   video.load();
+  if (livePlaybackUrl?.startsWith('/api/streams/')) {
+    fetch(livePlaybackUrl, { method: 'DELETE', keepalive: true }).catch(() => {});
+  }
+  livePlaybackUrl = null;
+  $('#liveFrame').classList.remove('has-video');
+}
+
+async function loadLiveStream() {
+  const camera = cameras.find((item) => item.id === liveCameraId);
+  if (!camera) return;
+  const requestId = ++liveRequestId;
+  const video = $('#liveVideo');
+  const frame = $('#liveFrame');
+  stopLivePlayback();
+  $('#liveModeLabel').textContent = camera.streamUrl ? 'MENGHUBUNGKAN' : 'SIAGA';
   $('#liveFallbackText').textContent = camera.streamUrl ? 'Menghubungkan ke tayangan lokal…' : 'Simulasi · URL tayangan belum diatur';
   if (!camera.streamUrl) return;
-  video.src = camera.streamUrl;
+
+  let playbackUrl = camera.streamUrl;
+  if (/^rtsp:\/\//i.test(camera.streamUrl)) {
+    try {
+      const response = await fetch('/api/streams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: camera.streamUrl }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'Tayangan RTSP tidak dapat disiapkan.');
+      if (requestId !== liveRequestId || !$('#liveDialog').open) {
+        fetch(data.playbackUrl, { method: 'DELETE', keepalive: true }).catch(() => {});
+        return;
+      }
+      playbackUrl = data.playbackUrl;
+    } catch (error) {
+      if (requestId !== liveRequestId) return;
+      $('#liveModeLabel').textContent = 'GAGAL';
+      $('#liveFallbackText').textContent = error.message || 'Tayangan RTSP tidak dapat disiapkan.';
+      return;
+    }
+  }
+
+  livePlaybackUrl = playbackUrl;
   video.onloadeddata = () => {
+    if (requestId !== liveRequestId) return;
+    $('#liveModeLabel').textContent = 'LIVE';
     frame.classList.add('has-video');
     video.play().catch(() => {});
   };
   video.onerror = () => {
+    if (requestId !== liveRequestId) return;
     frame.classList.remove('has-video');
-    $('#liveFallbackText').textContent = 'Tayangan tidak dapat diputar. Periksa URL dan format video.';
+    $('#liveModeLabel').textContent = 'TERPUTUS';
+    $('#liveFallbackText').textContent = 'Tayangan tidak dapat diputar. Periksa URL, kredensial, dan koneksi kamera.';
   };
+  video.src = playbackUrl;
   video.load();
 }
 
 function closeLive() {
+  liveRequestId += 1;
   clearInterval(liveClockTimer);
-  const video = $('#liveVideo');
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  $('#liveFrame').classList.remove('has-video');
+  stopLivePlayback();
 }
 
 function exportHistoryCsv() {
@@ -660,8 +767,8 @@ function exportHistoryCsv() {
 }
 
 async function hashPassword(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  if (!globalThis.crypto?.subtle) return sha256Hex(value);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -681,10 +788,11 @@ function enterApp(account, recordLogin = false) {
   renderFloorPlan();
   renderAll();
   showView('home');
-  if (recordLogin) addHistory('Masuk ke sistem', account.email, settings.profile.name);
+  loadCameras().catch(() => showToast('Data CCTV dari server belum dapat dimuat'));
 }
 
 function logout() {
+  fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   addHistory('Keluar dari sistem', settings.profile.email, settings.profile.name);
   sessionStorage.removeItem(SESSION_KEY);
   setEditMode(false);
@@ -698,11 +806,15 @@ function logout() {
   $('#loginEmail').focus();
 }
 
-function restoreSession() {
-  const email = sessionStorage.getItem(SESSION_KEY);
-  const account = ACCOUNTS.find((item) => item.email === email);
-  if (account) enterApp(account, false);
-  else {
+async function restoreSession() {
+  try {
+    const response = await fetch('/api/auth/session');
+    const { user } = response.ok ? await response.json() : { user: null };
+    if (user) return enterApp({ ...user, name: user.email.split('@')[0], division: user.role === 'admin' ? 'Administrator' : 'Operasional' }, false);
+  } catch {
+    // The login screen remains available if the server is offline.
+  }
+  {
     $('#authScreen').classList.remove('hidden');
     $('#appShell').classList.add('hidden');
     $('#loginEmail').focus();
@@ -794,7 +906,7 @@ $('#reportList').addEventListener('click', (event) => {
   if (button.dataset.reportAction === 'advance') advanceReport(button.dataset.id);
 });
 
-$('#deviceForm').addEventListener('submit', (event) => {
+$('#deviceForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!isAdmin()) return;
   const id = $('#formId').value.trim().toUpperCase();
@@ -818,15 +930,19 @@ $('#deviceForm').addEventListener('submit', (event) => {
     y: Number($('#formY').value),
     updated: 'Baru diperbarui'
   };
-  if (mode === 'add') cameras.push(data);
-  else cameras[cameras.findIndex((camera) => camera.id === id)] = data;
-  selectedId = id;
-  saveState();
-  addHistory(mode === 'add' ? 'Menambah perangkat' : 'Memperbarui perangkat', `${id} · ${data.location}`);
-  $('#deviceDialog').close();
-  renderAll();
-  if (activeView === 'map') openDetail(id);
-  showToast(`${id} disimpan`);
+  if (mode !== 'add') return showToast('Pembaruan titik belum tersedia.');
+  try {
+    const response = await fetch('/api/cameras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'CCTV tidak dapat disimpan');
+    selectedId = id;
+    await loadCameras();
+    $('#deviceDialog').close();
+    if (activeView === 'map') openDetail(id);
+    showToast(`${id} disimpan ke database`);
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 $('#reportForm').addEventListener('submit', (event) => {
@@ -916,11 +1032,51 @@ $('#testNetwork').addEventListener('click', async () => {
 });
 
 $('#networkCamera').addEventListener('change', fillStreamForm);
+$('#cameraIp').addEventListener('input', () => {
+  const camera = cameras.find((item) => item.id === $('#networkCamera').value);
+  const ip = $('#cameraIp').value.trim();
+  renderPingStatus(camera?.lastPing?.ip === ip ? camera.lastPing : null);
+});
+$('#pingCamera').addEventListener('click', async () => {
+  const camera = cameras.find((item) => item.id === $('#networkCamera').value);
+  const ip = $('#cameraIp').value.trim();
+  if (!camera || !isValidIpv4(ip)) {
+    renderPingStatus({ status: 'invalid' }, 'Masukkan alamat IPv4 yang valid, misalnya 192.168.1.64.');
+    return;
+  }
+  const button = $('#pingCamera');
+  button.disabled = true;
+  button.textContent = 'Menguji...';
+  renderPingStatus({ status: 'loading' }, `Menguji ${ip}...`);
+  try {
+    const response = await fetch('/api/ping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    if (!['online', 'offline'].includes(result.status) || result.ip !== ip) throw new Error('Respons ping tidak valid');
+    camera.lastPing = { status: result.status, ip, latencyMs: result.latencyMs, checkedAt: result.checkedAt };
+    saveState();
+    addHistory('Menguji IP CCTV', `${camera.id} · ${ip} · ${result.status === 'online' ? 'aktif' : 'tidak merespons'}`);
+    if ($('#networkCamera').value === camera.id && $('#cameraIp').value.trim() === ip) renderPingStatus(camera.lastPing);
+  } catch (error) {
+    if ($('#networkCamera').value === camera.id && $('#cameraIp').value.trim() === ip) {
+      renderPingStatus({ status: 'error' }, 'Layanan ping tidak dapat menyelesaikan pemeriksaan. Periksa terminal server lalu coba lagi.');
+    }
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Ping IP';
+  }
+});
 $('#streamForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const camera = cameras.find((item) => item.id === $('#networkCamera').value);
   if (!camera) return;
-  camera.ip = $('#cameraIp').value.trim();
+  const newIp = $('#cameraIp').value.trim();
+  if (camera.ip !== newIp && camera.lastPing?.ip !== newIp) camera.lastPing = null;
+  camera.ip = newIp;
   camera.streamUrl = $('#cameraStream').value.trim();
   camera.updated = 'Konfigurasi jaringan diperbarui';
   saveState();
@@ -1025,19 +1181,19 @@ $('#loginForm').addEventListener('submit', async (event) => {
   button.disabled = true;
   button.textContent = 'Memeriksa…';
   try {
-    const passwordHash = await hashPassword(passwordInput.value);
-    const account = ACCOUNTS.find((item) => item.email === email && item.passwordHash === passwordHash);
-    if (!account) {
+    const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: passwordInput.value }) });
+    const result = await response.json();
+    if (!response.ok || !result.user) {
       passwordInput.setAttribute('aria-invalid', 'true');
       setAuthError('Periksa kembali email dan kata sandi, lalu coba lagi.');
       return;
     }
-    enterApp(account, true);
+    enterApp({ ...result.user, name: result.user.email.split('@')[0], division: result.user.role === 'admin' ? 'Administrator' : 'Operasional' }, true);
     $('#loginForm').reset();
     $('#loginPassword').type = 'password';
     $('#togglePassword').textContent = 'Lihat';
   } catch (error) {
-    setAuthError('Autentikasi tidak dapat dijalankan di browser ini.');
+    setAuthError('Layanan autentikasi tidak dapat dijangkau.');
   } finally {
     button.disabled = false;
     button.textContent = 'Masuk';

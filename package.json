@@ -1,0 +1,16 @@
+{
+  "name": "cctv-grid-map",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/server.test.js tests/sha256.test.js",
+    "db:migrate": "node db/migrate.js",
+    "db:bootstrap": "node db/bootstrap.js",
+    "db:smoke": "node --test tests/database-smoke.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "pg": "^8.23.1"
+  }
+}

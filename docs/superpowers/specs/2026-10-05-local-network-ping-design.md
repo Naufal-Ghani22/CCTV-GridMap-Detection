@@ -149,7 +149,7 @@ Each camera may receive an optional `lastPing` object:
 }
 ```
 
-The object is saved through the existing local storage state. Existing cameras without `lastPing` migrate to the idle state. Editing a camera IP clears its previous `lastPing`, because the evidence belongs to the previous address.
+The object is saved through the existing local storage state. Existing cameras without `lastPing` migrate to the idle state. Editing a camera IP clears a result for the previous address. If the operator tested a new IP before saving it, that matching result remains available after saving.
 
 An ICMP result does not automatically change the camera's operational `normal`, `warning`, or `offline` status. Those statuses represent operational workflow and reports, while `lastPing` represents one network observation.
 

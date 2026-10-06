@@ -3,3 +3,7 @@ sources/
 .codex/
 .agents/
 .DS_Store
+server-output.log
+server-error.log
+.env
+node_modules/

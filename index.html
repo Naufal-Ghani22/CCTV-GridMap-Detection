@@ -20,7 +20,6 @@
           <label>Email petugas<input id="loginEmail" type="email" autocomplete="username" placeholder="nama@airport.local" aria-describedby="emailError" required /><small class="field-error" id="emailError"></small></label>
           <label>Kata sandi<span class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" aria-describedby="passwordError" required /><button type="button" id="togglePassword" aria-label="Tampilkan kata sandi">Lihat</button></span><small class="field-error" id="passwordError"></small></label>
           <button class="button primary auth-submit" id="loginButton" type="submit">Masuk</button>
-          <div class="demo-accounts"><p>Akun uji</p><button type="button" data-demo-account="admin"><span>Isi akun admin</span><small>admin@airport.local · Admin123!</small></button><button type="button" data-demo-account="user"><span>Isi akun pengguna</span><small>user@airport.local · User123!</small></button></div>
         </form>
       </div>
     </section>
@@ -217,7 +216,7 @@
 
             <section class="settings-card"><div class="settings-heading"><div><h2>Koneksi NVR</h2><p>Alamat server pada jaringan lokal bandara.</p></div><span class="setting-state" id="networkState">Belum diuji</span></div><form id="networkForm"><label>Alamat NVR<input id="nvrAddress" type="url" placeholder="http://192.168.10.20" required /></label><div class="form-row"><button class="button" id="testNetwork" type="button">Uji koneksi</button><button class="button primary" type="submit">Simpan</button></div></form></section>
 
-            <section class="settings-card wide"><div class="settings-heading"><div><h2>Tayangan kamera</h2><p>Atur alamat IP dan URL video tiap perangkat.</p></div></div><form id="streamForm"><div class="form-grid three"><label>CCTV<select id="networkCamera" required></select></label><label>Alamat IP<input id="cameraIp" type="text" inputmode="decimal" placeholder="192.168.10.101" /></label><label>URL tayangan<input id="cameraStream" type="url" placeholder="http://nvr.local/cam01.m3u8" /></label></div><div class="form-row"><button class="button primary" type="submit">Simpan konfigurasi</button></div></form><p class="form-note">Gunakan MP4, WebM, atau HLS. Tayangan RTSP perlu dikonversi oleh NVR ke HLS atau WebRTC.</p></section>
+            <section class="settings-card wide"><div class="settings-heading"><div><h2>Tayangan kamera</h2><p>Atur alamat IP dan URL video tiap perangkat.</p></div></div><form id="streamForm"><div class="form-grid three"><label>CCTV<select id="networkCamera" required></select></label><label>Alamat IP<input id="cameraIp" type="text" inputmode="decimal" placeholder="192.168.1.64" /></label><label>URL tayangan<input id="cameraStream" type="password" inputmode="url" autocomplete="off" placeholder="rtsp://pengguna:password@192.168.1.64:554/..." /></label></div><div class="camera-ping-status" id="cameraPingStatus" role="status" aria-live="polite"><span class="ping-indicator" aria-hidden="true"></span><div><strong id="cameraPingLabel">Belum diuji</strong><p id="cameraPingDetail">Masukkan alamat IP lalu tekan Ping IP.</p></div></div><div class="form-row"><button class="button" id="pingCamera" type="button">Ping IP</button><button class="button primary" type="submit">Simpan konfigurasi</button></div></form><p class="form-note">Mendukung RTSP dari CCTV lokal serta MP4/WebM langsung. Kredensial disamarkan pada formulir dan tidak dimasukkan ke URL pemutar.</p></section>
           </div>
         </section>
       </main>
@@ -227,7 +226,23 @@
       <form id="deviceForm">
         <button class="icon-button modal-close" type="button" data-close="deviceDialog" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
         <p class="context">Data perangkat</p><h2 id="deviceDialogTitle">Tambah CCTV</h2><input id="deviceMode" type="hidden" value="add" />
-        <div class="form-grid"><label>ID CCTV<input id="formId" required pattern="[A-Za-z0-9-]+" placeholder="CCTV-T1-025" /></label><label>Status<select id="formStatus"><option value="normal">Normal</option><option value="warning">Perhatian</option><option value="offline">Offline</option></select></label><label>Area<input id="formArea" required placeholder="Koridor utama" /></label><label>Lokasi rinci<input id="formLocation" required placeholder="Dekat Gate B3" /></label><label>Merek<input id="formBrand" required placeholder="Hikvision" /></label><label>Model<input id="formModel" required placeholder="DS-2CD2143G2-I" /></label><label>Nomor seri<input id="formSerial" required placeholder="HKV-T1-0021" /></label><label>Tanggal pemasangan<input id="formInstalled" type="date" required /></label><label>Warna<input id="formColor" placeholder="Putih" /></label><label>Bentuk<select id="formShape"><option>Dome</option><option>Bullet</option><option>PTZ</option><option>Fisheye</option></select></label><label>Alamat IP<input id="formIp" placeholder="192.168.10.101" /></label><label>URL tayangan<input id="formStream" type="url" placeholder="http://nvr.local/cam01.m3u8" /></label><label>Arah (0–359°)<input id="formAngle" type="number" min="0" max="359" required /></label><label>Posisi X (%)<input id="formX" type="number" min="2" max="98" step="0.1" required /></label><label>Posisi Y (%)<input id="formY" type="number" min="2" max="98" step="0.1" required /></label></div>
+        <div class="form-grid">
+          <label>ID CCTV<input id="formId" required pattern="[A-Za-z0-9-]+" placeholder="CCTV-T1-025" /></label>
+          <label>Status<select id="formStatus"><option value="normal">Normal</option><option value="warning">Perhatian</option><option value="offline">Offline</option></select></label>
+          <label>Area<select id="formArea" required><option value="" disabled selected>Pilih area</option><option>Checkin Keberangkatan</option><option>Kedatangan</option><option>Boarding</option></select></label>
+          <label>Lokasi rinci<input id="formLocation" required placeholder="Dekat Gate B3" /></label>
+          <label>Merek<input id="formBrand" required placeholder="Hikvision" /></label>
+          <label>Model<input id="formModel" required placeholder="DS-2CD2143G2-I" /></label>
+          <label>Nomor seri<input id="formSerial" required placeholder="HKV-T1-0021" /></label>
+          <label>Tanggal pemasangan<input id="formInstalled" type="date" required /></label>
+          <label>Warna<input id="formColor" placeholder="Putih" /></label>
+          <label>Bentuk<select id="formShape"><option>Dome</option><option>Bullet</option><option>PTZ</option><option>Fisheye</option></select></label>
+          <label>Alamat IP<input id="formIp" placeholder="192.168.10.101" /></label>
+          <label>URL tayangan<input id="formStream" type="password" inputmode="url" autocomplete="off" placeholder="rtsp://pengguna:password@192.168.1.64:554/..." /></label>
+          <label>Arah (0–359°)<input id="formAngle" type="number" min="0" max="359" required /></label>
+          <label>Posisi X (%)<input id="formX" type="number" min="2" max="98" step="0.1" required /></label>
+          <label>Posisi Y (%)<input id="formY" type="number" min="2" max="98" step="0.1" required /></label>
+        </div>
         <div class="dialog-actions"><button type="button" class="button" data-close="deviceDialog">Batal</button><button type="submit" class="button primary">Simpan perangkat</button></div>
       </form>
     </dialog>
@@ -237,7 +252,7 @@
     </dialog>
 
     <dialog id="liveDialog" class="modal-live">
-      <div class="dialog-shell"><button class="icon-button modal-close" type="button" data-close="liveDialog" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><div class="live-heading"><div><p class="context">Tayangan langsung</p><h2 id="liveCameraTitle">CCTV</h2></div><span class="status-label normal" id="liveStatus"><i></i>Normal</span></div><div class="live-frame" id="liveFrame"><video id="liveVideo" controls muted playsinline></video><div class="live-fallback" id="liveFallback"><span class="live-rec"><i></i>SIMULASI</span><div class="test-grid"></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8h11.2l5-3v14l-5-3H3.5z"/><path d="M7 8V5.5h5V8"/></svg><p id="liveFallbackText">URL tayangan belum diatur</p><time id="liveClock"></time></div></div><div class="live-meta"><span id="liveLocation"></span><span id="liveIp"></span></div><div class="dialog-actions"><button class="button" id="refreshLive" type="button">Muat ulang</button><button class="button primary" id="fullscreenLive" type="button">Layar penuh</button></div></div>
+      <div class="dialog-shell"><button class="icon-button modal-close" type="button" data-close="liveDialog" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><div class="live-heading"><div><p class="context">Tayangan langsung</p><h2 id="liveCameraTitle">CCTV</h2></div><span class="status-label normal" id="liveStatus"><i></i>Normal</span></div><div class="live-frame" id="liveFrame"><video id="liveVideo" controls muted playsinline></video><span class="live-video-badge" aria-label="Tayangan sedang berlangsung"><i></i>LIVE</span><div class="live-fallback" id="liveFallback"><span class="live-rec"><i></i><span id="liveModeLabel">SIAGA</span></span><div class="test-grid"></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8h11.2l5-3v14l-5-3H3.5z"/><path d="M7 8V5.5h5V8"/></svg><p id="liveFallbackText">URL tayangan belum diatur</p><time id="liveClock"></time></div></div><div class="live-meta"><span id="liveLocation"></span><span id="liveIp"></span></div><div class="dialog-actions"><button class="button" id="refreshLive" type="button">Muat ulang</button><button class="button primary" id="fullscreenLive" type="button">Layar penuh</button></div></div>
     </dialog>
 
     <dialog id="profileDialog">
@@ -247,6 +262,7 @@
     <dialog id="confirmDialog"><form id="confirmForm"><p class="context">Konfirmasi</p><h2 id="confirmTitle">Hapus perangkat?</h2><p id="confirmMessage" class="confirm-message"></p><div class="dialog-actions"><button type="button" class="button" data-close="confirmDialog">Batal</button><button type="submit" class="button danger" id="confirmAction">Hapus</button></div></form></dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="sha256.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
