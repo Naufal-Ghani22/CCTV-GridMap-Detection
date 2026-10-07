@@ -1,43 +1,35 @@
 # CCTV Grid Map
 
-Prototipe pengelolaan CCTV bandara dengan denah SVG interaktif.
+Sistem web lokal untuk inventaris CCTV bandara, titik pada denah, ping jaringan, dan tayangan RTSP di browser. Node.js melayani pengguna LAN, sedangkan PostgreSQL menyimpan data pusat pada komputer server.
 
-## Menjalankan aplikasi di jaringan lokal
+## Mulai cepat
 
-Pastikan Node.js dan FFmpeg terpasang, lalu jalankan `npm start` di folder proyek. Server akan berjalan pada port `8080` dan menampilkan alamat untuk komputer ini serta alamat LAN yang bisa dibuka dari perangkat lain pada jaringan yang sama. Jika Windows Firewall meminta izin, izinkan akses pada jaringan privat.
+1. Pasang Node.js, PostgreSQL 17, pgAdmin 4, dan FFmpeg pada komputer server.
+2. Salin `.env.example` menjadi `.env`, lalu isi semua nilai secara lokal.
+3. Jalankan `npm install`, `npm run db:migrate`, dan `npm run db:bootstrap`.
+4. Jalankan `npm start`, kemudian buka alamat LAN yang dicetak server.
 
-Buka alamat yang dicetak server, misalnya `http://192.168.1.10:8080`. Biarkan terminal server tetap berjalan selama aplikasi digunakan. Jika port 8080 sudah dipakai, jalankan `$env:PORT=8081; npm start` di PowerShell dan gunakan port yang tercetak.
+PostgreSQL hanya boleh mendengarkan `127.0.0.1` dan `::1`. Pengguna biasa cukup memakai browser, tanpa PostgreSQL atau pgAdmin.
 
-Untuk menguji CCTV, masuk sebagai admin, buka **Pengaturan sistem** → **Tayangan kamera**, pilih CCTV, isi **Alamat IP**, lalu tekan **Ping IP**. Hijau **Aktif** berarti alamat tersebut merespons satu ping ICMP dari komputer server. Waktu pemeriksaan dan latensi ditampilkan; hasil ini bukan pemantauan terus menerus dan tidak memastikan video kamera dapat dibuka.
+## Dokumentasi
 
-Untuk menampilkan video, tempel URL `rtsp://` dari administrator pada kolom **URL tayangan**, simpan konfigurasi, lalu buka **Perangkat** → **Tayangan**. Server mengubah RTSP menjadi MP4 terfragmentasi yang dapat diputar browser. URL pemutar menggunakan token sesi sementara sehingga username dan password kamera tidak tampil pada alamat video.
+- [Arsitektur](docs/architecture.md)
+- [Instalasi Windows](docs/installation-windows.md)
+- [Operasi CCTV](docs/operations.md)
+- [Database dan pgAdmin](docs/database.md)
+- [API](docs/api.md)
+- [Keamanan](docs/security.md)
+- [Deployment bandara](docs/deployment-airport.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
-Server ini ditujukan untuk jaringan lokal tepercaya. Aplikasi masih menggunakan akun demo dan menyimpan data perangkat di browser, sehingga jangan meneruskan port 8080 ke internet.
+## Perintah penting
 
-## Database PostgreSQL lokal
+```powershell
+npm install
+npm run db:migrate
+npm run db:bootstrap
+npm start
+npm run db:smoke
+```
 
-PostgreSQL dan pgAdmin dipasang pada komputer server. PostgreSQL harus hanya mendengarkan `127.0.0.1` dan `::1`; browser petugas hanya mengakses web melalui port `8080`.
-
-Salin `.env.example` menjadi `.env`, lalu isi URL koneksi role aplikasi, dua secret acak, dan akun administrator awal. Jangan menyimpan `.env` di Git atau membagikannya melalui chat. Setelah koneksi database tersedia, jalankan `npm run db:migrate` dan `npm run db:bootstrap` untuk membuat skema kosong dan akun admin pertama.
-
-## Akun demo
-
-- Admin: `admin@airport.local` / `Admin123!`
-- Pengguna: `user@airport.local` / `User123!`
-
-## Fitur
-
-- Ringkasan kondisi perangkat
-- Peta CCTV berbasis SVG
-- Pengaturan posisi dan arah pandang kamera
-- Inventaris perangkat
-- Hak akses admin dan pengguna
-- Laporan gangguan serta riwayat aktivitas
-- Impor denah SVG dari Figma
-- Konfigurasi NVR dan URL tayangan
-- Tayangan RTSP langsung melalui jembatan FFmpeg
-- Ping ICMP alamat CCTV dengan hasil dan waktu pemeriksaan
-
-## Catatan
-
-Versi ini menyimpan data di browser. Untuk penggunaan produksi, pindahkan autentikasi dan data ke backend, gunakan PostgreSQL, lalu hubungkan NVR melalui jaringan internal.
+`.env` berisi rahasia server dan tidak boleh masuk Git, backup database, atau chat.
