@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/server.test.js tests/sha256.test.js tests/reset-admin.test.js",
+    "test": "node --test tests/*.test.js",
+    "test:unit": "node --test tests/server.test.js tests/sessions.test.js tests/config.test.js tests/rtsp-secrets.test.js tests/passwords.test.js tests/validate.test.js tests/monitor.test.js",
+    "test:e2e": "node --test tests/*.spec.js",
     "db:migrate": "node db/migrate.js",
     "db:bootstrap": "node db/bootstrap.js",
     "db:reset-admin": "node db/reset-admin.js",

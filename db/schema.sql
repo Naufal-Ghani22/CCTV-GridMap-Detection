@@ -64,6 +64,21 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS division TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS report_code TEXT;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'normal';
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS camera_code TEXT NOT NULL DEFAULT '';
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_status_check;
+ALTER TABLE reports ADD CONSTRAINT reports_status_check CHECK (status IN ('open', 'progress', 'resolved'));
+ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_priority_check;
+ALTER TABLE reports ADD CONSTRAINT reports_priority_check CHECK (priority IN ('normal', 'high', 'critical'));
+CREATE UNIQUE INDEX IF NOT EXISTS reports_report_code_idx ON reports(report_code);
+CREATE INDEX IF NOT EXISTS reports_status_idx ON reports(status);
+
 CREATE INDEX IF NOT EXISTS reports_camera_id_idx ON reports(camera_id);
 CREATE INDEX IF NOT EXISTS activity_history_created_at_idx ON activity_history(created_at DESC);
 CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions(expires_at);

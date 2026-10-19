@@ -30,7 +30,6 @@ function loadConfig(env = process.env) {
 
   return Object.freeze({
     databaseUrl,
-    sessionSecret: requireValue(env, 'SESSION_SECRET'),
     rtspEncryptionKey: parseEncryptionKey(requireValue(env, 'RTSP_ENCRYPTION_KEY')),
     bootstrapAdminEmail: requireValue(env, 'BOOTSTRAP_ADMIN_EMAIL'),
     bootstrapAdminPassword: requireValue(env, 'BOOTSTRAP_ADMIN_PASSWORD'),

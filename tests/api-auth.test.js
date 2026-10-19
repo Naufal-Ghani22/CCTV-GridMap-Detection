@@ -45,7 +45,7 @@ test('creates an HttpOnly server session when administrator credentials are vali
   assert.equal(sessionRows.length, 1);
 
   const session = await fetch(`${base}/api/auth/session`, { headers: { Cookie: cookie } });
-  assert.deepEqual(await session.json(), { user: { id: user.id, email: user.email, role: 'admin' } });
+  assert.deepEqual(await session.json(), { user: { id: user.id, email: user.email, role: 'admin', name: 'admin', division: '' } });
 });
 
 test('rejects invalid credentials without a session cookie', async () => {
