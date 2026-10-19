@@ -118,7 +118,7 @@ test('a custom floor plan replaces the default and unsafe SVG is refused', async
   const unsafe = await api('/api/maps/ff', { method: 'PUT', body: '<svg viewBox="0 0 1 1" onload="alert(1)"></svg>', headers: { 'Content-Type': 'image/svg+xml' } });
   assert.equal(unsafe.status, 400);
   assert.equal((await api('/api/maps/ff', { method: 'DELETE' })).status, 204);
-  assert.match(await (await fetch(`${base}/api/maps/ff`, { headers: { Cookie: admin } })).text(), /fp-wall/);
+  assert.match(await (await fetch(`${base}/api/maps/ff`, { headers: { Cookie: admin } })).text(), /fp-solid/);
 });
 
 test('administrators manage operator accounts; operators get read access only', async () => {

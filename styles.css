@@ -323,6 +323,8 @@ main:has(#mapView:not(.hidden)) { overflow: hidden; padding-bottom: 14px; }
 .floor-plan .fp-col { fill: var(--fp-col); }
 .floor-plan .fp-glass { stroke: var(--fp-glass); stroke-width: calc(var(--wall-w, 1.4px) * 0.6); }
 .floor-plan .fp-circ { stroke: var(--fp-circ); stroke-width: calc(var(--wall-w, 1.4px) * 0.5); }
+/* Wall-only plans (tools/extract_walls.py): filled wall bands plus a hairline so they stay visible when zoomed out. */
+.floor-plan .fp-solid { fill: var(--fp-wall); stroke: var(--fp-wall); stroke-width: calc(var(--wall-w, 1.4px) * 0.75); stroke-linejoin: round; }
 .map-banner { position: absolute; top: 12px; left: 50%; z-index: 6; padding: 9px 16px; border: 1px solid var(--primary); border-radius: 999px; background: var(--overlay); color: var(--ink); font-size: 13px; font-weight: 600; transform: translateX(-50%); box-shadow: var(--shadow); backdrop-filter: blur(6px); }
 .compass-rose { position: absolute; top: 12px; left: 12px; z-index: 5; display: grid; justify-items: center; gap: 1px; padding: 4px 5px 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--overlay); pointer-events: none; }
 .compass-rose svg { width: 36px; height: 36px; }

@@ -60,6 +60,10 @@ Perubahan tersimpan otomatis ke database (indikator "Tersimpan HH.MM") dan langs
 
 Operator membuat laporan dari panel CCTV (**Lapor**) atau halaman **Laporan**. CCTV yang dilaporkan otomatis berstatus *perlu perhatian* (atau *offline* untuk masalah "Perangkat offline"). Admin memajukan status **Baru → Dikerjakan → Selesai**; saat laporan terakhir CCTV selesai, statusnya kembali normal.
 
+## Denah
+
+Denah bawaan (`maps/*.svg`) hanya berisi tembok, kolom, dan kaca, hasil ekstraksi dari PDF CAD dengan `tools/extract_walls.py` (lihat `tools/README.md`). Untuk denah lain, impor SVG di **Pengaturan → Denah lantai**.
+
 ## Pintasan keyboard
 
 `/` atau `Ctrl+K` cari CCTV · `1`–`6` pindah halaman · `G` ganti lantai · `N`/`P` CCTV berikut/sebelumnya · `+`/`-`/`0` zoom · `F` layar penuh · `Esc` tutup · `?` bantuan.

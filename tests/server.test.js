@@ -137,7 +137,8 @@ test('serves both floor plans as SVG with wall layers', async () => {
     assert.match(response.headers.get('content-type'), /^image\/svg\+xml/);
     const svg = await response.text();
     assert.match(svg, /^<svg [^>]*viewBox="0 0 \d+ \d+"/);
-    assert.match(svg, /class="fp-wall"/);
+    assert.match(svg, /class="fp-solid"/);
+    assert.ok(svg.length < 400 * 1024, 'wall-only plans stay light');
   }
   assert.equal((await fetch(`${base}/maps/other.svg`)).status, 404);
 });
