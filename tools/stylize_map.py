@@ -150,6 +150,79 @@ def polygons(mask, epsilon_px, factor, min_area_px):
     return ''.join(out)
 
 
+def layers(mask, res, bridge=1.0, column=1.4, bay=9.4, door=0.8):
+    """Return (walls, floor, rooms) uint8 masks from a raw wall mask at `res` px per point."""
+    px = lambda points: points * res  # noqa: E731
+    # 0. Join walls that CAD interrupts at every column. Each direction only closes its
+    #    own runs (horizontal runs along rows, vertical runs along columns), so collinear
+    #    pieces meet while parallel walls a few decimetres apart stay separate.
+    horizontal = cv2.morphologyEx(mask, cv2.MORPH_OPEN, rect(px(0.8), 1))
+    vertical = cv2.morphologyEx(mask, cv2.MORPH_OPEN, rect(1, px(0.8)))
+    mask = mask | cv2.morphologyEx(horizontal, cv2.MORPH_CLOSE, rect(px(bridge), 1))
+    mask = mask | cv2.morphologyEx(vertical, cv2.MORPH_CLOSE, rect(1, px(bridge)))
+    walls = mask > 0
+
+    with_columns = walls.astype(np.uint8) * 255  # the column grid outlines the building
+    # 1. Drop isolated columns and specks: small compact components.
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(walls.astype(np.uint8), 8)
+    small = (np.maximum(stats[:, cv2.CC_STAT_WIDTH], stats[:, cv2.CC_STAT_HEIGHT]) < px(column))
+    small[0] = False
+    walls &= ~small[labels]
+    walls_u8 = walls.astype(np.uint8) * 255
+    # Fill tiny holes inside walls (columns fused into a wall line) so the
+    # centre-line does not loop around them.
+    holes, hierarchy = cv2.findContours(walls_u8, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if hierarchy is not None:
+        def narrow(contour):
+            # Largest inscribed circle: rooms are at least ~1 m (1.2 pt) wide.
+            x, y, cw, ch = cv2.boundingRect(contour)
+            roi = np.zeros((ch + 2, cw + 2), np.uint8)
+            cv2.drawContours(roi, [contour - [x - 1, y - 1]], -1, 255, cv2.FILLED)
+            return cv2.distanceTransform(roi, cv2.DIST_L2, 3).max() * 2 < px(1.2)
+        tiny = [c for c, info in zip(holes, hierarchy[0]) if info[3] >= 0 and narrow(c)]
+        cv2.drawContours(walls_u8, tiny, -1, 255, cv2.FILLED)
+    walls = walls_u8 > 0
+
+    # 2. Building silhouette: grow walls, close courtyards, fill holes, shrink back.
+    #    Square kernels keep the outline orthogonal instead of blobby.
+    #    The canvas is padded first so the outside stays connected around walls
+    #    (e.g. boarding bridges) that touch the clip edge.
+    #    Columns stay in for this step: on glazed façades the column grid is the
+    #    only thing that says "inside", and growing it by half a bay joins it up.
+    pad = int(px(bay))
+    grow = cv2.copyMakeBorder(with_columns | walls_u8, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
+    grow = cv2.dilate(grow, rect(px(bay * 0.55)))
+    grow = cv2.morphologyEx(grow, cv2.MORPH_CLOSE, rect(px(6.0)))
+    flood = grow.copy()
+    cv2.floodFill(flood, np.zeros((flood.shape[0] + 2, flood.shape[1] + 2), np.uint8), (0, 0), 255)
+    floor = grow | cv2.bitwise_not(flood)
+    floor = cv2.erode(floor, rect(px(bay * 0.55 - 0.3)))
+    floor = cv2.morphologyEx(floor, cv2.MORPH_OPEN, rect(px(2.0)))
+    floor = np.ascontiguousarray(floor[pad:-pad, pad:-pad])
+    h, w = floor.shape
+
+    # 3. Rooms: free space inside the silhouette once door gaps are bridged.
+    barrier = cv2.dilate(walls_u8, disk(px(door)))
+    free = cv2.bitwise_and(floor, cv2.bitwise_not(barrier))
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(free, 4)
+    floor_area = max(1, int(np.count_nonzero(floor)))
+    areas = stats[:, cv2.CC_STAT_AREA]
+    is_room = (areas >= px(1.5) ** 2) & (areas <= floor_area * 0.08)
+    is_room[0] = False
+    # A real room is bounded by walls. Tiles whose edge mostly touches the outside
+    # of the building are leftovers of removed fixtures, not rooms.
+    border = (cv2.dilate(free, rect(3)) > 0) & (free == 0)
+    near_label = cv2.dilate(labels.astype(np.float32), rect(3)).astype(np.int64)  # float32 is exact for label ids
+    total_edge = np.bincount(near_label[border], minlength=count)
+    wall_edge = np.bincount(near_label[border & (barrier > 0)], minlength=count)
+    is_room &= wall_edge >= total_edge * 0.7
+    rooms = is_room[labels].astype(np.uint8) * 255
+    rooms = cv2.dilate(rooms, disk(px(door) * 0.9))
+    rooms = cv2.bitwise_and(rooms, cv2.bitwise_not(walls_u8))
+    rooms = cv2.morphologyEx(rooms, cv2.MORPH_OPEN, disk(px(0.3)))
+    return walls_u8, floor, rooms
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('pdf')
@@ -179,73 +252,8 @@ def main():
         if args.cache:
             np.savez_compressed(args.cache, mask=mask)
     px = lambda points: points * res  # noqa: E731
-    # 0. Join walls that CAD interrupts at every column. Each direction only closes its
-    #    own runs (horizontal runs along rows, vertical runs along columns), so collinear
-    #    pieces meet while parallel walls a few decimetres apart stay separate.
-    horizontal = cv2.morphologyEx(mask, cv2.MORPH_OPEN, rect(px(0.8), 1))
-    vertical = cv2.morphologyEx(mask, cv2.MORPH_OPEN, rect(1, px(0.8)))
-    mask = mask | cv2.morphologyEx(horizontal, cv2.MORPH_CLOSE, rect(px(args.bridge), 1))
-    mask = mask | cv2.morphologyEx(vertical, cv2.MORPH_CLOSE, rect(1, px(args.bridge)))
-    walls = mask > 0
-
-    with_columns = walls.astype(np.uint8) * 255  # the column grid outlines the building
-    # 1. Drop isolated columns and specks: small compact components.
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(walls.astype(np.uint8), 8)
-    small = (np.maximum(stats[:, cv2.CC_STAT_WIDTH], stats[:, cv2.CC_STAT_HEIGHT]) < px(args.column))
-    small[0] = False
-    walls &= ~small[labels]
-    walls_u8 = walls.astype(np.uint8) * 255
-    # Fill tiny holes inside walls (columns fused into a wall line) so the
-    # centre-line does not loop around them.
-    holes, hierarchy = cv2.findContours(walls_u8, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-    if hierarchy is not None:
-        def narrow(contour):
-            # Largest inscribed circle: rooms are at least ~1 m (1.2 pt) wide.
-            x, y, cw, ch = cv2.boundingRect(contour)
-            roi = np.zeros((ch + 2, cw + 2), np.uint8)
-            cv2.drawContours(roi, [contour - [x - 1, y - 1]], -1, 255, cv2.FILLED)
-            return cv2.distanceTransform(roi, cv2.DIST_L2, 3).max() * 2 < px(1.2)
-        tiny = [c for c, info in zip(holes, hierarchy[0]) if info[3] >= 0 and narrow(c)]
-        cv2.drawContours(walls_u8, tiny, -1, 255, cv2.FILLED)
-    walls = walls_u8 > 0
-
-    # 2. Building silhouette: grow walls, close courtyards, fill holes, shrink back.
-    #    Square kernels keep the outline orthogonal instead of blobby.
-    #    The canvas is padded first so the outside stays connected around walls
-    #    (e.g. boarding bridges) that touch the clip edge.
-    #    Columns stay in for this step: on glazed façades the column grid is the
-    #    only thing that says "inside", and growing it by half a bay joins it up.
-    pad = int(px(args.bay))
-    grow = cv2.copyMakeBorder(with_columns | walls_u8, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
-    grow = cv2.dilate(grow, rect(px(args.bay * 0.55)))
-    grow = cv2.morphologyEx(grow, cv2.MORPH_CLOSE, rect(px(6.0)))
-    flood = grow.copy()
-    cv2.floodFill(flood, np.zeros((flood.shape[0] + 2, flood.shape[1] + 2), np.uint8), (0, 0), 255)
-    floor = grow | cv2.bitwise_not(flood)
-    floor = cv2.erode(floor, rect(px(args.bay * 0.55 - 0.3)))
-    floor = cv2.morphologyEx(floor, cv2.MORPH_OPEN, rect(px(2.0)))
-    floor = np.ascontiguousarray(floor[pad:-pad, pad:-pad])
+    walls_u8, floor, rooms = layers(mask, res, args.bridge, args.column, args.bay, args.door)
     h, w = floor.shape
-
-    # 3. Rooms: free space inside the silhouette once door gaps are bridged.
-    barrier = cv2.dilate(walls_u8, disk(px(args.door)))
-    free = cv2.bitwise_and(floor, cv2.bitwise_not(barrier))
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(free, 4)
-    floor_area = max(1, int(np.count_nonzero(floor)))
-    areas = stats[:, cv2.CC_STAT_AREA]
-    is_room = (areas >= px(1.5) ** 2) & (areas <= floor_area * 0.08)
-    is_room[0] = False
-    # A real room is bounded by walls. Tiles whose edge mostly touches the outside
-    # of the building are leftovers of removed fixtures, not rooms.
-    border = (cv2.dilate(free, rect(3)) > 0) & (free == 0)
-    near_label = cv2.dilate(labels.astype(np.float32), rect(3)).astype(np.int64)  # float32 is exact for label ids
-    total_edge = np.bincount(near_label[border], minlength=count)
-    wall_edge = np.bincount(near_label[border & (barrier > 0)], minlength=count)
-    is_room &= wall_edge >= total_edge * 0.7
-    rooms = is_room[labels].astype(np.uint8) * 255
-    rooms = cv2.dilate(rooms, disk(px(args.door) * 0.9))
-    rooms = cv2.bitwise_and(rooms, cv2.bitwise_not(walls_u8))
-    rooms = cv2.morphologyEx(rooms, cv2.MORPH_OPEN, disk(px(0.3)))
 
     # 4. Wall centre-lines.
     skeleton = thin(cv2.morphologyEx(walls_u8, cv2.MORPH_CLOSE, disk(px(0.25))) > 0)
