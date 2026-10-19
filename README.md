@@ -1,6 +1,6 @@
 # CCTV Grid Map
 
-Sistem web lokal untuk inventaris CCTV bandara, titik pada denah, ping jaringan, dan tayangan RTSP di browser. Node.js melayani pengguna LAN, sedangkan PostgreSQL menyimpan data pusat pada komputer server.
+Sistem web ruang kontrol untuk CCTV bandara: titik dan arah kamera pada denah, pemantauan ping otomatis seluruh CCTV dan NVR, alarm offline, laporan gangguan, dan tayangan RTSP di browser. Node.js melayani pengguna LAN, sedangkan PostgreSQL menyimpan data pusat pada komputer server.
 
 ## Mulai cepat
 
@@ -29,8 +29,12 @@ npm install
 npm run db:migrate
 npm run db:bootstrap
 npm start
-npm run db:smoke
+npm test                 # unit + API (memakai PostgreSQL lokal dari .env)
+npm run test:e2e         # UI di Edge headless
+npm run db:smoke         # cek instalasi baru masih kosong
 npm run db:reset-admin   # setel ulang akun admin dari .env
 ```
+
+Opsi `.env` tambahan: `PORT`, `MONITOR_INTERVAL_SEC`, `MAX_STREAMS`, `STREAM_VIDEO_CODEC=copy`, `MONITOR_DISABLED=1`.
 
 `.env` berisi rahasia server dan tidak boleh masuk Git, backup database, atau chat.

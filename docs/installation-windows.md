@@ -26,7 +26,6 @@ Salin `.env.example` menjadi `.env`:
 
 ```dotenv
 DATABASE_URL=postgresql://cctv_app:SANDI_TERENKODE@127.0.0.1:5432/cctv_grid_map
-SESSION_SECRET=nilai-rahasia-acak
 RTSP_ENCRYPTION_KEY=base64-32-byte
 BOOTSTRAP_ADMIN_EMAIL=admin@organisasi.local
 BOOTSTRAP_ADMIN_PASSWORD=kata-sandi-minimal-12-karakter

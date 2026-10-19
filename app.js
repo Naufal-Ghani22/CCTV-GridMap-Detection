@@ -239,7 +239,8 @@ class ApiError extends Error {
 }
 
 async function api(path, { method = 'GET', body, headers = {}, raw = false } = {}) {
-  const init = { method, headers: { ...headers }, credentials: 'same-origin' };
+  // keepalive lets the last PATCH finish when the operator closes the tab (bodies are tiny).
+  const init = { method, headers: { ...headers }, credentials: 'same-origin', keepalive: method === 'PATCH' };
   if (body !== undefined) {
     if (typeof body === 'string' || body instanceof Blob) init.body = body;
     else {

@@ -7,7 +7,10 @@ Pindahkan folder proyek tanpa `.env`, `node_modules`, dan log; backup database; 
 3. Batasi PostgreSQL pada localhost.
 4. Pulihkan backup database atau buat database baru.
 5. Salin `.env`, jalankan `npm install`, `npm run db:migrate`, dan `npm start`.
-6. Buka port 8080 hanya untuk jaringan privat.
-7. Dari komputer petugas, buka `http://IP_SERVER:8080`; pastikan port 5432 tidak dapat diakses.
+6. Buka port 8080 hanya untuk jaringan privat. Pastikan server dapat menjangkau semua subnet/VLAN kamera dan NVR (monitor ping berjalan dari server).
+7. Buat akun tiap petugas di **Pengaturan → Akun petugas** dan daftarkan semua NVR di **Pengaturan → Server NVR**.
+8. Dari komputer petugas, buka `http://IP_SERVER:8080`; pastikan port 5432 tidak dapat diakses.
 
-Pemeriksaan penerimaan: login admin, data tampak sama dari dua browser, ping kamera dari server, satu live view berhasil, dan backup database serta `.env` tersimpan aman.
+Pemeriksaan penerimaan: login admin dan operator, perubahan arah CCTV di satu browser langsung terlihat di browser lain, monitor menandai kamera yang dicabut sebagai offline dalam ±2 interval, satu live view berhasil, `npm test` dan `npm run test:e2e` hijau, serta backup database dan `.env` tersimpan aman.
+
+Agar server hidup otomatis setelah komputer restart, jalankan `npm start` sebagai layanan Windows (mis. NSSM atau Task Scheduler "At startup") dengan folder kerja proyek.

@@ -4,13 +4,15 @@ Database pusat bernama `cctv_grid_map`. Di pgAdmin: `Servers` → `CCTV Local` �
 
 | Tabel | Fungsi |
 | --- | --- |
-| `users` | Akun aplikasi dan hash kata sandi |
-| `cameras` | Metadata serta koordinat CCTV |
+| `users` | Akun, peran (`admin`/`operator`), nama, divisi, status aktif |
+| `cameras` | Kode, area, IP, koordinat, dan `details` (lokasi, lantai, arah, sudut pandang, jangkauan, NVR, status manual, `lastPing`) |
 | `camera_streams` | URL RTSP terenkripsi |
-| `reports` | Laporan gangguan |
+| `reports` | Laporan gangguan (`report_code`, prioritas, status `open`/`progress`/`resolved`) |
 | `activity_history` | Aktivitas audit |
-| `settings` | Pengaturan bersama |
+| `settings` | `nvrs`, `areas`, `monitor`, dan `map:gf` / `map:ff` (SVG denah impor) |
 | `sessions` | Digest sesi login |
+
+Setiap memperbarui aplikasi, jalankan `npm run db:migrate`; skrip ini hanya menambah kolom/indeks dan aman dijalankan berulang.
 
 Lihat data dengan klik kanan tabel → **View/Edit Data** → **All Rows**. Jangan mengubah `password_hash`, `encrypted_rtsp`, atau `token_hash` secara manual.
 
