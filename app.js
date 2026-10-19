@@ -6,6 +6,12 @@ const LOCAL_CAMERA_ID = 'CCTV-T1-021';
 const LOCAL_CAMERA_IP = '192.168.1.64';
 const LEGACY_LOCAL_CAMERA_IP = '192.168.10.121';
 const AREA_OPTIONS = ['Checkin Keberangkatan', 'Kedatangan', 'Boarding'];
+const FLOORS = {
+  gf: { label: 'Lantai dasar', src: '/maps/ground-floor.svg' },
+  ff: { label: 'Lantai 1', src: '/maps/first-floor.svg' }
+};
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 14;
 const LEGACY_DEMO_AREAS = {
   'CCTV-T1-021': ['Koridor utama', 'Boarding', 'HKV-T1-0021'],
   'CCTV-T1-007': ['Ruang operasi', 'Checkin Keberangkatan', 'DHA-T1-0007'],
@@ -14,10 +20,6 @@ const LEGACY_DEMO_AREAS = {
   'CCTV-T1-019': ['Area bagasi', 'Kedatangan', 'HKV-T1-0019'],
   'CCTV-T1-024': ['Lounge dan kafe', 'Boarding', 'DHA-T1-0024']
 };
-const ACCOUNTS = [
-  { email: 'admin@airport.local', passwordHash: '3eb3fe66b31e3b4d10fa70b5cad49c7112294af6ae4e476a1c405155d45aa121', name: 'Adi Rachman', role: 'admin', division: 'Teknologi Informasi' },
-  { email: 'user@airport.local', passwordHash: 'bc5848f227cc161eb5f68dfe98cb13110a9c843ce69e953a88107d865583d397', name: 'Nadia Putri', role: 'user', division: 'Operasional' }
-];
 
 const defaultCameras = [
   { id: 'CCTV-T1-021', area: 'Boarding', location: 'Dekat Gate B3', brand: 'Hikvision', model: 'DS-2CD2143G2-I', serial: 'HKV-T1-0021', color: 'Putih', shape: 'Dome', installed: '2024-03-12', ip: LOCAL_CAMERA_IP, streamUrl: '', angle: 315, status: 'normal', x: 51, y: 37, updated: '4 menit lalu' },
@@ -80,6 +82,7 @@ function migrateCamera(camera, index) {
     streamUrl: camera.streamUrl || '',
     angle: Number.isFinite(camera.angle) ? camera.angle : Number(camera.direction?.match(/(\d+)°/)?.[1] || 0),
     status: camera.status || 'normal',
+    floor: FLOORS[camera.floor] ? camera.floor : 'gf',
     x: Number(camera.x) || 50,
     y: Number(camera.y) || 50,
     updated: camera.updated || 'Baru diperbarui'
@@ -106,6 +109,9 @@ settings.profile = { email: '', ...settings.profile };
 
 let selectedId = null;
 let activeView = 'home';
+let activeFloor = 'gf';
+const floorMarkup = {};
+const mapView = { zoom: 1, x: 0, y: 0, aspect: 7, fitted: false };
 let editMode = false;
 let pendingConfirm = null;
 let liveCameraId = null;
@@ -116,8 +122,8 @@ let toastTimer = null;
 
 const cameraLayer = $('#cameraLayer');
 const mapArea = $('#mapArea');
+const mapCanvas = $('#mapCanvas');
 const directionRange = $('#directionRange');
-const defaultMapMarkup = $('#floorPlanHost').innerHTML;
 
 function saveState() {
   // CCTV data is centrally stored by PostgreSQL.
@@ -128,6 +134,25 @@ async function loadCameras() {
   if (!response.ok) throw new Error('Data CCTV tidak dapat dimuat.');
   cameras = (await response.json()).map(migrateCamera);
   renderAll();
+}
+
+async function persistCamera(id, fields) {
+  try {
+    const response = await fetch(`/api/cameras/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.message || 'Perubahan tidak dapat disimpan.');
+    }
+    return true;
+  } catch (error) {
+    showToast(error.message);
+    await loadCameras();
+    return false;
+  }
 }
 
 function isAdmin() {
@@ -181,16 +206,153 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
-function renderFloorPlan() {
+async function loadFloorMarkup(floor) {
+  if (!floorMarkup[floor]) {
+    const response = await fetch(FLOORS[floor].src);
+    if (!response.ok) throw new Error('Denah tidak dapat dimuat.');
+    floorMarkup[floor] = await response.text();
+  }
+  return floorMarkup[floor];
+}
+
+async function renderFloorPlan() {
   const host = $('#floorPlanHost');
-  host.innerHTML = settings.customMap || defaultMapMarkup;
+  const floor = activeFloor;
+  let markup = settings.customMap;
+  if (!markup) {
+    try {
+      markup = await loadFloorMarkup(floor);
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
+    if (floor !== activeFloor) return;
+  }
+  host.innerHTML = markup;
   const svg = host.querySelector('svg');
   if (svg) {
     svg.classList.add('floor-plan');
     svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', 'Denah bandara');
+    svg.setAttribute('aria-label', settings.customMap ? 'Denah bandara' : `Denah ${FLOORS[floor].label.toLowerCase()}`);
+    const [, , width, height] = (svg.getAttribute('viewBox') || '0 0 1000 660').split(/[\s,]+/).map(Number);
+    mapView.aspect = width > 0 && height > 0 ? width / height : 1000 / 660;
   }
+  mapView.fitted = false;
+  layoutMap();
   $('#mapSourceLabel').textContent = settings.customMap ? 'SVG impor' : 'Denah bawaan';
+}
+
+function setFloor(floor) {
+  if (!FLOORS[floor] || floor === activeFloor) return;
+  activeFloor = floor;
+  $$('.map-floors button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.floor === floor)));
+  if (selectedId && cameras.find((item) => item.id === selectedId)?.floor !== floor) closeDetail();
+  renderFloorPlan();
+  renderCameras();
+}
+
+function baseMapSize() {
+  const width = mapArea.clientWidth;
+  const height = mapArea.clientHeight;
+  return width / height > mapView.aspect
+    ? { width: height * mapView.aspect, height }
+    : { width, height: width / mapView.aspect };
+}
+
+function clampPan() {
+  const base = baseMapSize();
+  const width = base.width * mapView.zoom;
+  const height = base.height * mapView.zoom;
+  const areaWidth = mapArea.clientWidth;
+  const areaHeight = mapArea.clientHeight;
+  mapView.x = width <= areaWidth ? (areaWidth - width) / 2 : Math.min(0, Math.max(areaWidth - width, mapView.x));
+  mapView.y = height <= areaHeight ? (areaHeight - height) / 2 : Math.min(0, Math.max(areaHeight - height, mapView.y));
+  return { width, height };
+}
+
+function layoutMap() {
+  if (!mapArea.clientWidth || !mapArea.clientHeight) return;
+  if (!mapView.fitted) {
+    // The terminal is long and narrow, so open at a readable height instead of the full overview.
+    const base = baseMapSize();
+    mapView.zoom = Math.min(3.5, Math.max(MIN_ZOOM, (mapArea.clientHeight * 0.85) / base.height));
+    mapView.x = (mapArea.clientWidth - base.width * mapView.zoom) / 2;
+    mapView.y = (mapArea.clientHeight - base.height * mapView.zoom) / 2;
+    mapView.fitted = true;
+  }
+  const { width, height } = clampPan();
+  mapCanvas.style.width = `${width}px`;
+  mapCanvas.style.height = `${height}px`;
+  mapCanvas.style.transform = `translate(${mapView.x}px, ${mapView.y}px)`;
+  mapCanvas.style.setProperty('--wall-w', `${Math.min(3.4, 1.1 + mapView.zoom * 0.22).toFixed(2)}px`);
+  $('#zoomIn').disabled = mapView.zoom >= MAX_ZOOM;
+  $('#zoomOut').disabled = mapView.zoom <= MIN_ZOOM;
+}
+
+function zoomMap(factor, clientX, clientY) {
+  const bounds = mapArea.getBoundingClientRect();
+  const originX = clientX === undefined ? bounds.width / 2 : clientX - bounds.left;
+  const originY = clientY === undefined ? bounds.height / 2 : clientY - bounds.top;
+  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, mapView.zoom * factor));
+  const ratio = zoom / mapView.zoom;
+  mapView.x = originX - (originX - mapView.x) * ratio;
+  mapView.y = originY - (originY - mapView.y) * ratio;
+  mapView.zoom = zoom;
+  layoutMap();
+}
+
+function focusCamera(camera) {
+  if (mapView.zoom < 4) mapView.zoom = 4;
+  const base = baseMapSize();
+  mapView.x = mapArea.clientWidth / 2 - (camera.x / 100) * base.width * mapView.zoom;
+  mapView.y = mapArea.clientHeight / 2 - (camera.y / 100) * base.height * mapView.zoom;
+  layoutMap();
+}
+
+const mapPointers = new Map();
+let mapGesture = null;
+
+function beginMapGesture() {
+  const points = [...mapPointers.values()];
+  const center = points.reduce((sum, point) => ({ x: sum.x + point.x / points.length, y: sum.y + point.y / points.length }), { x: 0, y: 0 });
+  const distance = points.length > 1 ? Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) : 0;
+  mapGesture = { center, distance, zoom: mapView.zoom, x: mapView.x, y: mapView.y };
+}
+
+function startPan(event) {
+  if (event.button !== 0 || event.target.closest('.camera, .map-floors, .map-zoom')) return;
+  mapArea.setPointerCapture(event.pointerId);
+  mapPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  mapArea.classList.add('panning');
+  beginMapGesture();
+}
+
+function moveMap(event) {
+  if (!mapPointers.has(event.pointerId)) return;
+  mapPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  const points = [...mapPointers.values()];
+  const center = points.reduce((sum, point) => ({ x: sum.x + point.x / points.length, y: sum.y + point.y / points.length }), { x: 0, y: 0 });
+  if (points.length > 1 && mapGesture.distance) {
+    const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    const bounds = mapArea.getBoundingClientRect();
+    const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, mapGesture.zoom * (distance / mapGesture.distance)));
+    const ratio = zoom / mapGesture.zoom;
+    const originX = mapGesture.center.x - bounds.left;
+    const originY = mapGesture.center.y - bounds.top;
+    mapView.zoom = zoom;
+    mapView.x = originX - (originX - mapGesture.x) * ratio + (center.x - mapGesture.center.x);
+    mapView.y = originY - (originY - mapGesture.y) * ratio + (center.y - mapGesture.center.y);
+  } else {
+    mapView.x = mapGesture.x + center.x - mapGesture.center.x;
+    mapView.y = mapGesture.y + center.y - mapGesture.center.y;
+  }
+  layoutMap();
+}
+
+function endPan(event) {
+  if (!mapPointers.delete(event.pointerId)) return;
+  if (mapPointers.size) beginMapGesture();
+  else mapArea.classList.remove('panning');
 }
 
 function renderCameras() {
@@ -200,7 +362,7 @@ function renderCameras() {
 
   cameras.forEach((camera) => {
     const haystack = `${camera.id} ${camera.area} ${camera.location} ${camera.brand} ${camera.model}`.toLowerCase();
-    if ((query && !haystack.includes(query)) || (filter !== 'all' && camera.status !== filter)) return;
+    if (camera.floor !== activeFloor || (query && !haystack.includes(query)) || (filter !== 'all' && camera.status !== filter)) return;
 
     const marker = document.createElement('div');
     marker.className = `camera-marker status-${camera.status}${selectedId === camera.id ? ' selected' : ''}`;
@@ -275,6 +437,10 @@ function renderDashboard() {
 function openDetail(id, shouldRender = true) {
   const camera = cameras.find((item) => item.id === id);
   if (!camera) return;
+  if (camera.floor !== activeFloor) {
+    setFloor(camera.floor);
+    requestAnimationFrame(() => focusCamera(camera));
+  }
   selectedId = id;
   $('#emptyState').classList.add('hidden');
   $('#detailContent').classList.remove('hidden');
@@ -339,7 +505,7 @@ function startDrag(event) {
   const move = (moveEvent) => {
     if (!moved && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < 4) return;
     moved = true;
-    const bounds = mapArea.getBoundingClientRect();
+    const bounds = mapCanvas.getBoundingClientRect();
     const camera = cameras.find((item) => item.id === id);
     camera.x = Number(Math.max(2, Math.min(98, ((moveEvent.clientX - bounds.left) / bounds.width) * 100)).toFixed(1));
     camera.y = Number(Math.max(2, Math.min(98, ((moveEvent.clientY - bounds.top) / bounds.height) * 100)).toFixed(1));
@@ -354,9 +520,11 @@ function startDrag(event) {
     dragButton.removeEventListener('pointerup', end);
     dragButton.removeEventListener('pointercancel', end);
     if (moved) {
-      saveState();
       addHistory('Memindahkan titik', `${id} ke X ${$('#positionX').value}, Y ${$('#positionY').value}`);
-      showToast(`Posisi ${id} disimpan`);
+      const camera = cameras.find((item) => item.id === id);
+      if (camera) {
+        persistCamera(id, { x: camera.x, y: camera.y }).then((ok) => { if (ok) showToast(`Posisi ${id} disimpan`); });
+      }
     }
   };
   dragButton.addEventListener('pointermove', move);
@@ -384,8 +552,8 @@ function updatePosition(axis, rawValue) {
   if (!editMode || !selectedId || !isAdmin()) return;
   const camera = cameras.find((item) => item.id === selectedId);
   camera[axis] = Number(Math.max(2, Math.min(98, Number(rawValue))).toFixed(1));
-  saveState();
   addHistory('Memperbarui posisi', `${camera.id}: ${axis.toUpperCase()} ${camera[axis]}`);
+  persistCamera(camera.id, { [axis]: camera[axis] });
   renderCameras();
 }
 
@@ -477,8 +645,8 @@ function renderAll() {
 }
 
 const pageMeta = {
-  home: ['Terminal 1 / Lantai 2', 'Ringkasan'],
-  map: ['Terminal 1 / Lantai 2', 'Peta CCTV'],
+  home: ['Terminal 1', 'Ringkasan'],
+  map: ['Terminal 1', 'Peta CCTV'],
   devices: ['Inventaris', 'Perangkat CCTV'],
   reports: ['Operasional', 'Laporan gangguan'],
   history: ['Audit', 'Riwayat aktivitas'],
@@ -510,6 +678,7 @@ function showView(view) {
   $('#pageTitle').textContent = pageMeta[view][1];
   $('#reportListButton').classList.toggle('hidden', view !== 'map');
   setMobileMenu(false);
+  if (view === 'map') layoutMap();
   if (view === 'devices') renderDeviceTable();
   if (view === 'reports') renderReports();
   if (view === 'history') renderHistory();
@@ -549,6 +718,7 @@ function openDeviceDialog(id = null) {
   $('#formIp').value = camera?.ip || '';
   $('#formStream').value = camera?.streamUrl || '';
   $('#formAngle').value = camera?.angle ?? 0;
+  $('#formFloor').value = camera?.floor || activeFloor;
   $('#formX').value = camera?.x ?? 50;
   $('#formY').value = camera?.y ?? 50;
   $('#deviceDialog').showModal();
@@ -573,12 +743,20 @@ function openConfirm(title, message, actionLabel, callback) {
 function deleteSelectedDevice() {
   if (!selectedId || !isAdmin()) return;
   const camera = cameras.find((item) => item.id === selectedId);
-  openConfirm('Hapus perangkat?', `${camera.id} dan titiknya akan dihapus dari peta. Riwayat laporan tetap tersimpan.`, 'Hapus', () => {
-    cameras = cameras.filter((item) => item.id !== camera.id);
-    addHistory('Menghapus perangkat', `${camera.id} · ${camera.location}`);
-    closeDetail();
-    renderAll();
-    showToast(`${camera.id} dihapus`);
+  openConfirm('Hapus perangkat?', `${camera.id} dan titiknya akan dihapus dari peta. Riwayat laporan tetap tersimpan.`, 'Hapus', async () => {
+    try {
+      const response = await fetch(`/api/cameras/${encodeURIComponent(camera.id)}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || 'CCTV tidak dapat dihapus.');
+      }
+      addHistory('Menghapus perangkat', `${camera.id} · ${camera.location}`);
+      closeDetail();
+      await loadCameras();
+      showToast(`${camera.id} dihapus`);
+    } catch (error) {
+      showToast(error.message);
+    }
   });
 }
 
@@ -766,12 +944,6 @@ function exportHistoryCsv() {
   showToast('Riwayat diekspor');
 }
 
-async function hashPassword(value) {
-  if (!globalThis.crypto?.subtle) return sha256Hex(value);
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
 function setAuthError(message = '') {
   const box = $('#authError');
   box.classList.toggle('hidden', !message);
@@ -866,8 +1038,9 @@ $('#exportHistory').addEventListener('click', exportHistoryCsv);
 directionRange.addEventListener('input', (event) => updateDirection(event.target.value));
 directionRange.addEventListener('change', () => {
   const camera = cameras.find((item) => item.id === selectedId);
-  if (camera) addHistory('Memperbarui arah', `${camera.id} menjadi ${camera.angle}°`);
-  showToast('Arah kamera disimpan');
+  if (!camera) return;
+  addHistory('Memperbarui arah', `${camera.id} menjadi ${camera.angle}°`);
+  persistCamera(camera.id, { angle: camera.angle }).then((ok) => { if (ok) showToast('Arah kamera disimpan'); });
 });
 $$('.cardinal-buttons button').forEach((button) => button.addEventListener('click', () => {
   updateDirection(button.dataset.angle);
@@ -926,20 +1099,22 @@ $('#deviceForm').addEventListener('submit', async (event) => {
     ip: $('#formIp').value.trim(),
     streamUrl: $('#formStream').value.trim(),
     angle: Number($('#formAngle').value),
+    floor: $('#formFloor').value,
     x: Number($('#formX').value),
     y: Number($('#formY').value),
     updated: 'Baru diperbarui'
   };
-  if (mode !== 'add') return showToast('Pembaruan titik belum tersedia.');
   try {
-    const response = await fetch('/api/cameras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const response = mode === 'add'
+      ? await fetch('/api/cameras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      : await fetch(`/api/cameras/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'CCTV tidak dapat disimpan');
     selectedId = id;
     await loadCameras();
     $('#deviceDialog').close();
     if (activeView === 'map') openDetail(id);
-    showToast(`${id} disimpan ke database`);
+    showToast(mode === 'add' ? `${id} disimpan ke database` : `${id} diperbarui`);
   } catch (error) {
     showToast(error.message);
   }
@@ -1084,6 +1259,20 @@ $('#streamForm').addEventListener('submit', (event) => {
   renderAll();
   showToast(`Konfigurasi ${camera.id} disimpan`);
 });
+
+mapArea.addEventListener('pointerdown', startPan);
+mapArea.addEventListener('pointermove', moveMap);
+mapArea.addEventListener('pointerup', endPan);
+mapArea.addEventListener('pointercancel', endPan);
+mapArea.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  zoomMap(event.deltaY < 0 ? 1.2 : 1 / 1.2, event.clientX, event.clientY);
+}, { passive: false });
+$('#zoomIn').addEventListener('click', () => zoomMap(1.5));
+$('#zoomOut').addEventListener('click', () => zoomMap(1 / 1.5));
+$('#zoomFit').addEventListener('click', () => { mapView.zoom = MIN_ZOOM; layoutMap(); });
+$$('.map-floors button').forEach((button) => button.addEventListener('click', () => setFloor(button.dataset.floor)));
+window.addEventListener('resize', layoutMap);
 
 $('#mapFile').addEventListener('change', (event) => {
   const file = event.target.files[0];

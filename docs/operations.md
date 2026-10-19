@@ -8,6 +8,8 @@ Jalankan `npm start` pada folder proyek dan biarkan terminal tetap terbuka. Guna
 
 Gunakan nilai `BOOTSTRAP_ADMIN_EMAIL` dan `BOOTSTRAP_ADMIN_PASSWORD` yang dipakai ketika bootstrap pertama kali dijalankan. Mengubah `.env` setelah itu tidak mengubah akun yang sudah tersimpan di database.
 
+Jika kata sandi admin lupa atau `.env` diubah, isi kembali kedua nilai tersebut (email valid, kata sandi minimal 12 karakter), lalu jalankan `npm run db:reset-admin`. Perintah ini memperbarui atau membuat akun admin sesuai `.env`, mengakhiri sesinya yang lama, dan menghapus akun tanpa alamat email valid.
+
 ## Menambah titik CCTV
 
 1. Masuk sebagai administrator.

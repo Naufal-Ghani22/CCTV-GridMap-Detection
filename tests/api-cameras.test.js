@@ -52,3 +52,50 @@ test('an administrator can add a camera without exposing its RTSP URL', async ()
   assert.equal(saved.ip, '192.168.1.64');
   assert.equal('streamUrl' in saved, false);
 });
+
+test('an administrator can move a plotted camera and the new position persists', async () => {
+  const response = await fetch(`${base}/api/cameras/TEST-CAMERA-DB`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ x: 72.5, y: 18.3, angle: 90 }),
+  });
+  const updated = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(updated.x, 72.5);
+  assert.equal(updated.y, 18.3);
+  assert.equal(updated.angle, 90);
+
+  const list = await fetch(`${base}/api/cameras`, { headers: { Cookie: cookie } });
+  const saved = (await list.json()).find((item) => item.id === 'TEST-CAMERA-DB');
+  assert.equal(saved.x, 72.5);
+  assert.equal(saved.y, 18.3);
+  assert.equal(saved.ip, '192.168.1.64', 'a partial update must not wipe other fields');
+});
+
+test('a partial update rejects an invalid IP without touching the row', async () => {
+  const response = await fetch(`${base}/api/cameras/TEST-CAMERA-DB`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ ip: '999.1.1.1' }),
+  });
+  assert.equal(response.status, 400);
+});
+
+test('updating or deleting a missing camera returns 404', async () => {
+  const patch = await fetch(`${base}/api/cameras/NO-SUCH-CAMERA`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ x: 10 }),
+  });
+  assert.equal(patch.status, 404);
+  const del = await fetch(`${base}/api/cameras/NO-SUCH-CAMERA`, { method: 'DELETE', headers: { Cookie: cookie } });
+  assert.equal(del.status, 404);
+});
+
+test('an administrator can delete a camera and it disappears from the inventory', async () => {
+  const response = await fetch(`${base}/api/cameras/TEST-CAMERA-DB`, { method: 'DELETE', headers: { Cookie: cookie } });
+  assert.equal(response.status, 204);
+  const list = await fetch(`${base}/api/cameras`, { headers: { Cookie: cookie } });
+  const stillThere = (await list.json()).some((item) => item.id === 'TEST-CAMERA-DB');
+  assert.equal(stillThere, false);
+});

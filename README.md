@@ -30,6 +30,7 @@ npm run db:migrate
 npm run db:bootstrap
 npm start
 npm run db:smoke
+npm run db:reset-admin   # setel ulang akun admin dari .env
 ```
 
 `.env` berisi rahasia server dan tidak boleh masuk Git, backup database, atau chat.

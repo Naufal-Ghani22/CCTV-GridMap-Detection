@@ -88,6 +88,19 @@ test('serves app assets while denying hidden and unlisted files', async () => {
   assert.equal((await fetch(`${base}/api/ping`)).status, 405);
 });
 
+test('serves both floor plans as SVG with wall layers', async () => {
+  const base = await start();
+  for (const floor of ['ground-floor', 'first-floor']) {
+    const response = await fetch(`${base}/maps/${floor}.svg`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /^image\/svg\+xml/);
+    const svg = await response.text();
+    assert.match(svg, /^<svg [^>]*viewBox="0 0 \d+ \d+"/);
+    assert.match(svg, /class="fp-wall"/);
+  }
+  assert.equal((await fetch(`${base}/maps/other.svg`)).status, 404);
+});
+
 test('returns a service error when ping cannot start', async () => {
   const base = await start(async () => { throw new Error('missing executable'); });
   const response = await post(base, { ip: '192.168.1.64' });

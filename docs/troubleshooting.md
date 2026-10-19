@@ -6,7 +6,7 @@ Pastikan `npm start` berjalan, gunakan alamat LAN yang dicetak terminal, dan per
 
 ## Login gagal
 
-Gunakan email dan kata sandi yang dipakai pada bootstrap awal. Pastikan PostgreSQL hidup dan `DATABASE_URL` pada `.env` valid.
+Gunakan email dan kata sandi yang dipakai pada bootstrap awal. Pastikan PostgreSQL hidup dan `DATABASE_URL` pada `.env` valid. Jika akun admin tidak diketahui, perbarui `BOOTSTRAP_ADMIN_EMAIL` dan `BOOTSTRAP_ADMIN_PASSWORD` di `.env`, lalu jalankan `npm run db:reset-admin`.
 
 ## Database tidak tersedia
 

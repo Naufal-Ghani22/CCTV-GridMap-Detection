@@ -15,6 +15,8 @@ const ASSETS = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/sha256.js', ['sha256.js', 'text/javascript; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
+  ['/maps/ground-floor.svg', ['maps/ground-floor.svg', 'image/svg+xml; charset=utf-8']],
+  ['/maps/first-floor.svg', ['maps/first-floor.svg', 'image/svg+xml; charset=utf-8']],
 ]);
 
 function isValidIpv4(ip) {
@@ -277,7 +279,7 @@ function createServer({
           await client.query('BEGIN');
           const result = await client.query(
             'INSERT INTO cameras (id, camera_code, name, area, ip_address, map_x, map_y, details) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING camera_code, name, area, ip_address::text, map_x, map_y, details',
-            [crypto.randomUUID(), id, name, area, ip, Number(data.x) || 50, Number(data.y) || 50, JSON.stringify({ location: data.location || '', status: data.status || 'normal', angle: Number(data.angle) || 0, brand: data.brand || '', model: data.model || '', serial: data.serial || '', color: data.color || '', shape: data.shape || '', installed: data.installed || '' })],
+            [crypto.randomUUID(), id, name, area, ip, Number(data.x) || 50, Number(data.y) || 50, JSON.stringify({ location: data.location || '', status: data.status || 'normal', angle: Number(data.angle) || 0, brand: data.brand || '', model: data.model || '', serial: data.serial || '', color: data.color || '', shape: data.shape || '', installed: data.installed || '', floor: data.floor === 'ff' ? 'ff' : 'gf' })],
           );
           if (streamUrl) await client.query('INSERT INTO camera_streams (camera_id, encrypted_rtsp) SELECT id, $1 FROM cameras WHERE camera_code = $2', [encryptRtsp(streamUrl, rtspEncryptionKey), id]);
           await client.query('INSERT INTO activity_history (id, actor_id, action, subject_type, subject_id, details) SELECT $1, $2, $3, $4, id, $5 FROM cameras WHERE camera_code = $6', [crypto.randomUUID(), user.id, 'Menambah perangkat', 'camera', JSON.stringify({ cameraCode: id }), id]);
@@ -296,6 +298,100 @@ function createServer({
         return sendJson(response, 500, { error: 'camera_save_failed', message: 'CCTV tidak dapat disimpan.' });
       }
     }
+    const cameraRoute = /^\/api\/cameras\/(.+)$/.exec(route || '');
+    if (cameraRoute) {
+      if (!pool) return sendJson(response, 503, { error: 'database_unavailable', message: 'Database belum terhubung.' });
+      const user = await getSessionUser(pool, parseCookies(request.headers.cookie).cctv_session);
+      if (!user) return sendJson(response, 401, { error: 'authentication_required', message: 'Silakan masuk terlebih dahulu.' });
+      if (user.role !== 'admin') return sendJson(response, 403, { error: 'admin_required', message: 'Hanya administrator yang dapat mengubah CCTV.' });
+      let cameraCode = '';
+      try { cameraCode = decodeURIComponent(cameraRoute[1]).trim().toUpperCase(); } catch { cameraCode = ''; }
+      if (!cameraCode) return sendJson(response, 400, { error: 'invalid_camera', message: 'Kode CCTV tidak valid.' });
+
+      if (request.method === 'DELETE') {
+        try {
+          const result = await pool.query('DELETE FROM cameras WHERE camera_code = $1 RETURNING id', [cameraCode]);
+          if (!result.rowCount) return sendJson(response, 404, { error: 'camera_not_found', message: 'CCTV tidak ditemukan.' });
+          await pool.query('INSERT INTO activity_history (id, actor_id, action, subject_type, subject_id, details) VALUES ($1, $2, $3, $4, $5, $6)', [crypto.randomUUID(), user.id, 'Menghapus perangkat', 'camera', result.rows[0].id, JSON.stringify({ cameraCode })]);
+          response.writeHead(204, { 'Cache-Control': 'no-store' });
+          return response.end();
+        } catch (error) {
+          logError('Penghapusan CCTV gagal:', error.message);
+          return sendJson(response, 500, { error: 'camera_delete_failed', message: 'CCTV tidak dapat dihapus.' });
+        }
+      }
+
+      if (request.method !== 'PATCH') {
+        response.setHeader('Allow', 'PATCH, DELETE');
+        return sendJson(response, 405, { error: 'method_not_allowed', message: 'Metode tidak didukung.' });
+      }
+      if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] || '')) return sendJson(response, 400, { error: 'invalid_content_type', message: 'Kirim data JSON.' });
+      try {
+        const raw = await readBody(request, 12 * 1024);
+        let data;
+        try { data = JSON.parse(raw); } catch { data = null; }
+        if (!data || typeof data !== 'object') return sendJson(response, 400, { error: 'invalid_camera', message: 'Data CCTV tidak valid.' });
+        const has = (key) => Object.prototype.hasOwnProperty.call(data, key);
+
+        const existing = await pool.query('SELECT id, name, area, ip_address::text, map_x, map_y, details FROM cameras WHERE camera_code = $1', [cameraCode]);
+        const current = existing.rows[0];
+        if (!current) return sendJson(response, 404, { error: 'camera_not_found', message: 'CCTV tidak ditemukan.' });
+
+        const name = has('name') && typeof data.name === 'string' && data.name.trim() ? data.name.trim() : current.name;
+        const area = has('area') && typeof data.area === 'string' && data.area.trim() ? data.area.trim() : current.area;
+
+        let ip = current.ip_address ? String(current.ip_address).replace(/\/32$/, '') : null;
+        if (has('ip')) {
+          const candidate = typeof data.ip === 'string' ? data.ip.trim() : '';
+          if (candidate && !isValidIpv4(candidate)) return sendJson(response, 400, { error: 'invalid_camera', message: 'Alamat IP CCTV tidak valid.' });
+          ip = candidate || null;
+        }
+
+        const clamp = (value, fallback) => {
+          const number = Number(value);
+          if (!Number.isFinite(number)) return fallback;
+          return Math.max(0, Math.min(100, number));
+        };
+        const mapX = has('x') ? clamp(data.x, current.map_x) : current.map_x;
+        const mapY = has('y') ? clamp(data.y, current.map_y) : current.map_y;
+
+        const details = { ...(current.details || {}) };
+        for (const key of ['location', 'status', 'brand', 'model', 'serial', 'color', 'shape', 'installed']) {
+          if (has(key) && typeof data[key] === 'string') details[key] = data[key];
+        }
+        if (has('angle')) details.angle = Number(data.angle) || 0;
+        if (has('floor')) details.floor = data.floor === 'ff' ? 'ff' : 'gf';
+
+        let streamUrl = '';
+        if (has('streamUrl')) {
+          streamUrl = typeof data.streamUrl === 'string' ? data.streamUrl.trim() : '';
+          if (streamUrl && (!rtspEncryptionKey || !parseRtspUrl(streamUrl))) return sendJson(response, 400, { error: 'invalid_rtsp_url', message: 'URL RTSP harus memakai alamat IPv4 jaringan lokal.' });
+        }
+
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          const result = await client.query(
+            'UPDATE cameras SET name = $1, area = $2, ip_address = $3, map_x = $4, map_y = $5, details = $6, updated_at = now() WHERE camera_code = $7 RETURNING camera_code, name, area, ip_address::text, map_x, map_y, details',
+            [name, area, ip, mapX, mapY, JSON.stringify(details), cameraCode],
+          );
+          if (streamUrl) await client.query('INSERT INTO camera_streams (camera_id, encrypted_rtsp) SELECT id, $1 FROM cameras WHERE camera_code = $2 ON CONFLICT (camera_id) DO UPDATE SET encrypted_rtsp = EXCLUDED.encrypted_rtsp, updated_at = now()', [encryptRtsp(streamUrl, rtspEncryptionKey), cameraCode]);
+          await client.query('INSERT INTO activity_history (id, actor_id, action, subject_type, subject_id, details) SELECT $1, $2, $3, $4, id, $5 FROM cameras WHERE camera_code = $6', [crypto.randomUUID(), user.id, 'Memperbarui perangkat', 'camera', JSON.stringify({ cameraCode }), cameraCode]);
+          await client.query('COMMIT');
+          return sendJson(response, 200, cameraResponse(result.rows[0]));
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        if (error.status === 413) return sendJson(response, 413, { error: 'body_too_large', message: 'Data CCTV terlalu besar.' });
+        logError('Pembaruan CCTV gagal:', error.message);
+        return sendJson(response, 500, { error: 'camera_update_failed', message: 'CCTV tidak dapat diperbarui.' });
+      }
+    }
+
     if (route === '/api/ping') {
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');

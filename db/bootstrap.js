@@ -2,6 +2,9 @@ const crypto = require('node:crypto');
 const { hashPassword } = require('../lib/passwords');
 
 async function bootstrapAdmin(pool, config) {
+  if (!/^[^\s@]+@[^\s@]+$/.test(config.bootstrapAdminEmail.trim())) {
+    throw new Error('BOOTSTRAP_ADMIN_EMAIL harus berupa alamat email, misalnya admin@bandara.local.');
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

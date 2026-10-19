@@ -129,21 +129,21 @@
                 <span id="editingHint">Pilih titik untuk melihat detail</span>
               </div>
 
-              <div class="map-area" id="mapArea" aria-label="Denah Terminal 1 Lantai 2">
-                <div class="floor-plan-host" id="floorPlanHost">
-                  <svg class="floor-plan" viewBox="0 0 1000 660" role="img" aria-label="Denah Terminal 1 Lantai 2">
-                    <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" /></pattern></defs>
-                    <rect class="grid" width="1000" height="660" />
-                    <path class="hall" d="M85 269H915V421H85zM440 90h145v485H440z" />
-                    <path class="room" d="M112 121h230v122H112zM658 121h230v122H658zM112 447h230v114H112zM658 447h230v114H658z" />
-                    <path class="room" d="M355 121h72v122h-72zM598 121h47v122h-47zM355 447h72v114h-72zM598 447h47v114h-47z" />
-                    <path class="gate" d="M85 292H45M85 397H45M915 292h40M915 397h40" />
-                    <g class="plan-label"><text x="227" y="185">RUANG OPERASI</text><text x="773" y="185">GATE B1–B6</text><text x="227" y="507">AREA BAGASI</text><text x="773" y="507">LOUNGE &amp; KAFE</text><text x="512" y="254">KORIDOR UTAMA</text></g>
-                    <g class="door"><path d="M342 177h13a25 25 0 0 0-25 25M658 177h-13a25 25 0 0 1 25 25M342 503h13a25 25 0 0 1-25-25M658 503h-13a25 25 0 0 0 25-25" /></g>
-                  </svg>
+              <div class="map-area" id="mapArea" aria-label="Denah bandara">
+                <div class="map-canvas" id="mapCanvas">
+                  <div class="floor-plan-host" id="floorPlanHost"></div>
+                  <div id="cameraLayer" class="camera-layer"></div>
                 </div>
-                <div id="cameraLayer" class="camera-layer"></div>
-                <div class="map-scale" aria-hidden="true"><span></span>50 m</div>
+                <div class="map-floors" role="group" aria-label="Pilih lantai">
+                  <button type="button" data-floor="gf" aria-pressed="true">Lantai dasar</button>
+                  <button type="button" data-floor="ff" aria-pressed="false">Lantai 1</button>
+                </div>
+                <div class="map-zoom" role="group" aria-label="Kontrol zoom peta">
+                  <button type="button" id="zoomIn" aria-label="Perbesar peta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+                  <button type="button" id="zoomOut" aria-label="Perkecil peta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                  <button type="button" id="zoomFit" aria-label="Tampilkan seluruh denah"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+                </div>
+                <p class="map-hint" id="mapHint">Gulir atau cubit untuk zoom, tarik untuk menggeser</p>
               </div>
             </div>
 
@@ -240,6 +240,7 @@
           <label>Alamat IP<input id="formIp" placeholder="192.168.10.101" /></label>
           <label>URL tayangan<input id="formStream" type="password" inputmode="url" autocomplete="off" placeholder="rtsp://pengguna:password@192.168.1.64:554/..." /></label>
           <label>Arah (0–359°)<input id="formAngle" type="number" min="0" max="359" required /></label>
+          <label>Lantai<select id="formFloor"><option value="gf">Lantai dasar</option><option value="ff">Lantai 1</option></select></label>
           <label>Posisi X (%)<input id="formX" type="number" min="2" max="98" step="0.1" required /></label>
           <label>Posisi Y (%)<input id="formY" type="number" min="2" max="98" step="0.1" required /></label>
         </div>

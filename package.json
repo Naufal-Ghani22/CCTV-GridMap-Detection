@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/server.test.js tests/sha256.test.js",
+    "test": "node --test tests/server.test.js tests/sha256.test.js tests/reset-admin.test.js",
     "db:migrate": "node db/migrate.js",
     "db:bootstrap": "node db/bootstrap.js",
+    "db:reset-admin": "node db/reset-admin.js",
     "db:smoke": "node --test tests/database-smoke.js"
   },
   "dependencies": {
