@@ -31,12 +31,16 @@
   --fov-offline: #f87171;
   --fov-selected: #38bdf8;
   --select: #38bdf8;
-  --map-bg: #0c1518;
+  --map-bg: #0a1215;
   --map-grid: rgba(125, 149, 146, 0.07);
   --fp-wall: #a9bfbc;
   --fp-col: #a9bfbc;
   --fp-glass: #4aa3df;
   --fp-circ: #3a5157;
+  --fp-floor: #13222a;
+  --fp-room: #182b34;
+  --fp-line: #9fb7bd;
+  --fp-edge: #2a424c;
   --marker-ring: #0a1113;
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
@@ -73,12 +77,16 @@
   --fov-offline: #dc2626;
   --fov-selected: #0284c7;
   --select: #0284c7;
-  --map-bg: #fbfcfc;
+  --map-bg: #e6ecee;
   --map-grid: rgba(15, 118, 110, 0.05);
   --fp-wall: #1f2d2a;
   --fp-col: #1f2d2a;
   --fp-glass: #3b82c4;
   --fp-circ: #a3b3ae;
+  --fp-floor: #f3f6f7;
+  --fp-room: #ffffff;
+  --fp-line: #3d4d55;
+  --fp-edge: #c9d5da;
   --marker-ring: #ffffff;
   --shadow: 0 14px 34px rgba(17, 38, 35, 0.12);
   --shadow-sm: 0 2px 6px rgba(17, 38, 35, 0.14);
@@ -311,7 +319,7 @@ main:has(#mapView:not(.hidden)) { overflow: hidden; padding-bottom: 14px; }
 /* Map layout */
 .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 12px; flex: 1; min-height: 0; }
 .map-stage { position: relative; min-width: 0; min-height: 0; }
-.map-area { position: absolute; inset: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background-color: var(--map-bg); background-image: linear-gradient(var(--map-grid) 1px, transparent 1px), linear-gradient(90deg, var(--map-grid) 1px, transparent 1px); background-size: 32px 32px; cursor: grab; touch-action: none; user-select: none; }
+.map-area { position: absolute; inset: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--map-bg); cursor: grab; touch-action: none; user-select: none; }
 .map-area.panning { cursor: grabbing; }
 .map-area.placing { cursor: crosshair; }
 .map-area:fullscreen { border-radius: 0; }
@@ -323,6 +331,10 @@ main:has(#mapView:not(.hidden)) { overflow: hidden; padding-bottom: 14px; }
 .floor-plan .fp-col { fill: var(--fp-col); }
 .floor-plan .fp-glass { stroke: var(--fp-glass); stroke-width: calc(var(--wall-w, 1.4px) * 0.6); }
 .floor-plan .fp-circ { stroke: var(--fp-circ); stroke-width: calc(var(--wall-w, 1.4px) * 0.5); }
+/* Indoor-map plans (tools/stylize_map.py): building floor, room tiles, uniform wall lines. */
+.floor-plan .fp-floor { fill: var(--fp-floor); stroke: var(--fp-edge); stroke-width: 1px; }
+.floor-plan .fp-room { fill: var(--fp-room); stroke: none; }
+.floor-plan .fp-line { fill: none; stroke: var(--fp-line); stroke-width: calc(var(--wall-w, 1.4px) * 1.25); stroke-linecap: round; stroke-linejoin: round; }
 /* Wall-only plans (tools/extract_walls.py): filled wall bands plus a hairline so they stay visible when zoomed out. */
 .floor-plan .fp-solid { fill: var(--fp-wall); stroke: var(--fp-wall); stroke-width: calc(var(--wall-w, 1.4px) * 0.75); stroke-linejoin: round; }
 .map-banner { position: absolute; top: 12px; left: 50%; z-index: 6; padding: 9px 16px; border: 1px solid var(--primary); border-radius: 999px; background: var(--overlay); color: var(--ink); font-size: 13px; font-weight: 600; transform: translateX(-50%); box-shadow: var(--shadow); backdrop-filter: blur(6px); }

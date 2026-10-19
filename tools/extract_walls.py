@@ -63,27 +63,11 @@ def points(item):
     return []
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('pdf')
-    parser.add_argument('svg')
-    parser.add_argument('--floor', required=True)
-    parser.add_argument('--label', default='')
-    parser.add_argument('--clip', type=parse_rect, required=True)
-    parser.add_argument('--exclude', type=parse_rect, action='append', default=[])
-    parser.add_argument('--resolution', type=float, default=20, help='mask pixels per PDF point')
-    parser.add_argument('--close', type=float, default=0.35, help='gap bridged between wall lines, in points')
-    parser.add_argument('--open', type=float, default=0.15, help='thinnest band kept, in points')
-    parser.add_argument('--min-area', type=float, default=0.12, help='smallest kept blob, in square points')
-    parser.add_argument('--max-thickness', type=float, default=1.2, help='solid areas thicker than this (points) are hatches, not walls')
-    parser.add_argument('--min-glass', type=float, default=0.4, help='shortest kept glass segment, in points (drops door swings)')
-    parser.add_argument('--scale', type=float, default=10, help='SVG units per PDF point')
-    parser.add_argument('--preview', help='optional PNG of the extracted mask')
-    args = parser.parse_args()
-
-    page = pymupdf.open(args.pdf)[0]
+def wall_mask(pdf, clip, exclude=(), resolution=20, close=0.35, open_=0.15, min_area=0.12, max_thickness=1.2, min_glass=0.4):
+    """Return (mask, glass_lines): a uint8 wall mask in pixels and glass segments in pixel coordinates."""
+    page = pymupdf.open(pdf)[0]
     rotation = page.rotation_matrix
-    clip, res = args.clip, args.resolution
+    res = resolution
     width_px, height_px = int(clip.width * res), int(clip.height * res)
     mask = np.zeros((height_px, width_px), np.uint8)
 
@@ -95,7 +79,7 @@ def main():
         r = pymupdf.Rect(rect) * rotation
         if r.x1 < clip.x0 or r.x0 > clip.x1 or r.y1 < clip.y0 or r.y0 > clip.y1:
             return False
-        return not any(r.x0 >= a.x0 and r.x1 <= a.x1 and r.y0 >= a.y0 and r.y1 <= a.y1 for a in args.exclude)
+        return not any(r.x0 >= a.x0 and r.x1 <= a.x1 and r.y0 >= a.y0 and r.y1 <= a.y1 for a in exclude)
 
     strokes, fills, glass = [], [], []
     for drawing in page.get_drawings():
@@ -109,7 +93,7 @@ def main():
                 if item[0] != 'l':
                     continue  # curves on these layers are door swings
                 a, b = item[1], item[2]
-                if abs(b.x - a.x) + abs(b.y - a.y) >= args.min_glass:
+                if abs(b.x - a.x) + abs(b.y - a.y) >= min_glass:
                     glass.append([to_px(a), to_px(b)])
             continue
         if CLUTTER.search(name) or not dark_neutral(rgb):
@@ -137,18 +121,41 @@ def main():
         size = max(1, int(round(points_size * res)))
         return cv2.getStructuringElement(cv2.MORPH_RECT, (size, size))
 
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel(args.close))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel(args.open))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel(close))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel(open_))
     # Hatched floors and zones become solid after closing; walls are thin bands, so
     # anything that still survives a large opening is area fill, not a wall.
-    thick = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel(args.max_thickness))
-    thick = cv2.dilate(thick, kernel(args.close))
+    thick = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel(max_thickness))
+    thick = cv2.dilate(thick, kernel(close))
     mask = cv2.subtract(mask, thick)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel(args.open))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel(open_))
     count, labels, stats, _ = cv2.connectedComponentsWithStats(mask, 8)
     keep = np.zeros(count, bool)
-    keep[1:] = stats[1:, cv2.CC_STAT_AREA] >= args.min_area * res * res
+    keep[1:] = stats[1:, cv2.CC_STAT_AREA] >= min_area * res * res
     mask = np.where(keep[labels], 255, 0).astype(np.uint8)
+    return mask, glass
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('pdf')
+    parser.add_argument('svg')
+    parser.add_argument('--floor', required=True)
+    parser.add_argument('--label', default='')
+    parser.add_argument('--clip', type=parse_rect, required=True)
+    parser.add_argument('--exclude', type=parse_rect, action='append', default=[])
+    parser.add_argument('--resolution', type=float, default=20, help='mask pixels per PDF point')
+    parser.add_argument('--close', type=float, default=0.35, help='gap bridged between wall lines, in points')
+    parser.add_argument('--open', type=float, default=0.15, help='thinnest band kept, in points')
+    parser.add_argument('--min-area', type=float, default=0.12, help='smallest kept blob, in square points')
+    parser.add_argument('--max-thickness', type=float, default=1.2, help='solid areas thicker than this (points) are hatches, not walls')
+    parser.add_argument('--min-glass', type=float, default=0.4, help='shortest kept glass segment, in points (drops door swings)')
+    parser.add_argument('--scale', type=float, default=10, help='SVG units per PDF point')
+    parser.add_argument('--preview', help='optional PNG of the extracted mask')
+    args = parser.parse_args()
+
+    clip, res = args.clip, args.resolution
+    mask, glass = wall_mask(args.pdf, clip, args.exclude, res, args.close, args.open, args.min_area, args.max_thickness, args.min_glass)
     if args.preview:
         cv2.imwrite(args.preview, 255 - mask)
 

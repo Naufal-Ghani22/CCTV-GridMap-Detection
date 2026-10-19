@@ -62,7 +62,7 @@ Operator membuat laporan dari panel CCTV (**Lapor**) atau halaman **Laporan**. C
 
 ## Denah
 
-Denah bawaan (`maps/*.svg`) hanya berisi tembok, kolom, dan kaca, hasil ekstraksi dari PDF CAD dengan `tools/extract_walls.py` (lihat `tools/README.md`). Untuk denah lain, impor SVG di **Pengaturan → Denah lantai**.
+Denah bawaan (`maps/*.svg`) adalah peta indoor yang digambar ulang dari PDF CAD dengan `tools/stylize_map.py`: tapak gedung, petak ruangan, dan garis tembok seragam, tanpa furnitur atau teks (lihat `tools/README.md`). Untuk denah lain, impor SVG di **Pengaturan → Denah lantai**.
 
 ## Pintasan keyboard
 
