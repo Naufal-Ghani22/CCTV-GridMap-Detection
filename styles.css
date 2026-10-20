@@ -587,6 +587,56 @@ dialog form, dialog .dialog-shell { display: grid; gap: 12px; padding: 20px; }
 .live-fallback time { position: absolute; right: 12px; bottom: 10px; color: #e4efed; font: 600 12px "Cascadia Mono", Consolas, monospace; }
 .live-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; }
 
+/* View: video wall */
+#wallView { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+#wallView.hidden { display: none !important; }
+main:has(#wallView:not(.hidden)) { overflow: hidden; padding-bottom: 14px; }
+.wall-head { display: grid; gap: 8px; }
+.wall-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.wall-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wall-controls select { width: auto; min-height: 36px; }
+.wall-custom { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.wall-custom input { width: 58px; min-height: 36px; padding: 0 8px; text-align: center; }
+.wall-pager { display: inline-flex; align-items: center; gap: 2px; }
+.wall-pager span { min-width: 44px; color: var(--ink-soft); font-size: 13px; text-align: center; }
+.wall-pager .icon-button:disabled { opacity: 0.35; }
+.wall-note { margin: 0; color: var(--muted); font-size: 13px; }
+.wall-grid { display: grid; flex: 1; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 2), minmax(0, 1fr)); gap: 3px; min-height: 0; padding: 3px; border-radius: 10px; background: #000; }
+.wall-grid:fullscreen { padding: 0; border-radius: 0; gap: 2px; }
+.wall-grid.has-solo .wall-tile:not(.solo) { display: none; }
+.wall-grid.has-solo .wall-tile.solo { grid-column: 1 / -1; grid-row: 1 / -1; }
+.wall-tile { position: relative; overflow: hidden; min-width: 0; min-height: 0; background: #050a0b; }
+.wall-tile.offline { box-shadow: inset 0 0 0 2px var(--st-offline); }
+.wall-tile video { display: none; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.wall-tile[data-state="playing"] video { display: block; }
+.wall-fallback { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 36px 14px 14px; color: #8fa7a3; font-size: 13px; text-align: center; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 4px), #050a0b; }
+.wall-fallback svg { width: 40px; height: 40px; fill: none; stroke: #39524e; stroke-width: 1.4; }
+.wall-fallback p { max-width: 360px; margin: 0; }
+.wall-tile[data-state="playing"] .wall-fallback { display: none; }
+.wall-tile[data-state="empty"] .wall-fallback svg { opacity: 0.4; }
+.wall-tile[data-state="error"] .wall-fallback p, .wall-tile[data-state="limit"] .wall-fallback p { color: #fca5a5; }
+.wall-tile[data-state="over"] .wall-fallback p, .wall-tile[data-state="unavailable"] .wall-fallback p { color: #fcd34d; }
+.wall-label { position: absolute; top: 8px; left: 8px; display: inline-flex; align-items: center; gap: 7px; max-width: calc(100% - 16px); padding: 3px 9px; border-radius: 5px; background: rgba(0, 0, 0, 0.6); color: #e4efed; font-size: 12px; pointer-events: none; }
+.wall-label b { font-weight: 700; white-space: nowrap; }
+.wall-label span { overflow: hidden; color: #b3c6c3; text-overflow: ellipsis; white-space: nowrap; }
+.wall-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity 120ms; }
+.wall-tile:hover .wall-actions, .wall-actions:focus-within { opacity: 1; }
+.wall-tile:hover .wall-label, .wall-tile:focus-within .wall-label { max-width: calc(100% - 230px); }
+.wall-actions select { width: 150px; min-height: 30px; padding: 0 8px; border-color: rgba(255, 255, 255, 0.18); background: rgba(0, 0, 0, 0.72); color: #e4efed; font-size: 12px; }
+.wall-action { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 7px; background: rgba(0, 0, 0, 0.72); color: #e4efed; }
+.wall-action:hover { border-color: var(--primary); color: var(--primary); }
+.wall-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.wall-tile[data-state="over"] [data-wall="reload"], .wall-tile[data-state="unavailable"] [data-wall="reload"] { display: none; }
+
+/* Standalone View window (?display=wall): the grid fills the window, the toolbar slides in on mouse move. */
+html.wall-display .rail, html.wall-display .topbar, html.wall-display .skip-link, html.wall-display .wall-popout { display: none; }
+html.wall-display .app-shell { grid-template-columns: minmax(0, 1fr); }
+html.wall-display .workspace-shell { grid-template-rows: minmax(0, 1fr); }
+html.wall-display main, html.wall-display main:has(#wallView:not(.hidden)) { padding: 0; }
+html.wall-display .wall-grid { padding: 0; border-radius: 0; gap: 2px; }
+html.wall-display .wall-head { position: fixed; top: 0; right: 0; left: 0; z-index: 20; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--overlay); box-shadow: var(--shadow); transform: translateY(-100%); transition: transform 160ms ease; }
+html.wall-display.wall-chrome .wall-head, html.wall-display #wallView.is-empty .wall-head { transform: none; }
+
 /* Toasts */
 .toast-stack { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: grid; gap: 8px; width: min(380px, calc(100vw - 36px)); }
 .toast { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 12px 11px 14px; border: 1px solid var(--line-strong); border-left: 4px solid var(--primary); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); font-size: 13px; animation: toast-in 180ms ease-out; }
@@ -625,6 +675,9 @@ dialog form, dialog .dialog-shell { display: grid; gap: 12px; padding: 20px; }
   .nav-item[aria-current="page"]::before { display: none; }
   #mapView { height: auto; }
   main:has(#mapView:not(.hidden)) { overflow: auto; }
+  html:not(.wall-display) #wallView { height: auto; }
+  html:not(.wall-display) main:has(#wallView:not(.hidden)) { overflow: auto; }
+  html:not(.wall-display) .wall-grid { flex: none; aspect-ratio: 16 / 9; }
   .map-layout { grid-template-columns: 1fr; }
   .map-stage { height: 62dvh; }
   .side-panel { max-height: none; }

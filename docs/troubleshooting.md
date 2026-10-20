@@ -26,7 +26,7 @@ Biasanya server kehilangan rute ke subnet kamera, bukan kamera mati semua. Cek s
 
 ## Kamera tidak bisa ping/live
 
-Periksa IP, gateway, VLAN, rute antar-subnet, firewall, port RTSP 554, kredensial RTSP, dan FFmpeg (`ffmpeg -version`). Ping sukses hanya berarti ICMP tersedia. "Batas tayangan bersamaan tercapai" berarti tutup tayangan lain atau naikkan `MAX_STREAMS`. Untuk kamera H.264, `STREAM_VIDEO_CODEC=copy` sangat menghemat CPU.
+Periksa IP, gateway, VLAN, rute antar-subnet, firewall, port RTSP 554, kredensial RTSP, dan FFmpeg (`ffmpeg -version`). Ping sukses hanya berarti ICMP tersedia. "Batas tayangan bersamaan tercapai" berarti tutup tayangan lain atau naikkan `MAX_STREAMS`; "Melebihi batas … per pengguna" di View berarti naikkan `MAX_STREAMS_PER_USER`. Untuk kamera H.264, `STREAM_VIDEO_CODEC=copy` sangat menghemat CPU.
 
 ## Denah impor ditolak
 

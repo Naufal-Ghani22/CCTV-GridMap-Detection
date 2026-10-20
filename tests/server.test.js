@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const http = require('node:http');
 const { afterEach, test } = require('node:test');
 const { PassThrough } = require('node:stream');
 const { EventEmitter } = require('node:events');
@@ -207,6 +209,67 @@ test('limits concurrent stream sessions in total', async () => {
   const third = await postStream(base, { cameraCode: 'CCTV-T1-021' });
   assert.equal(third.status, 429);
   assert.equal((await third.json()).error, 'stream_limit');
+});
+
+test('reports stream limits and how many streams the caller holds', async () => {
+  const base = await start(undefined, { pool: streamPool(), streamAvailable: async () => true, startStream: fakeStream([]), maxStreams: 6, maxStreamsPerUser: 3 });
+  const info = async () => (await fetch(`${base}/api/streams`, { headers: { Cookie: SESSION_COOKIE } })).json();
+  assert.deepEqual(await info(), { maxTotal: 6, maxPerUser: 3, active: 0, mine: 0, available: true });
+  assert.equal((await postStream(base, { cameraCode: 'CCTV-T1-021' })).status, 201);
+  assert.equal((await info()).mine, 1);
+  assert.equal((await fetch(`${base}/api/streams`)).status, 401);
+});
+
+test('the per-user stream limit is configurable and reclaims that user\'s oldest stream', async () => {
+  const base = await start(undefined, { pool: streamPool(), streamAvailable: async () => true, startStream: fakeStream([]), maxStreamsPerUser: 2 });
+  const urls = [];
+  for (let index = 0; index < 3; index += 1) {
+    urls.push((await (await postStream(base, { cameraCode: 'CCTV-T1-021' })).json()).playbackUrl);
+  }
+  const remove = (url) => fetch(`${base}${url}`, { method: 'DELETE', headers: { Cookie: SESSION_COOKIE } });
+  assert.equal((await remove(urls[0])).status, 404, 'oldest stream was reclaimed');
+  assert.equal((await remove(urls[2])).status, 204);
+});
+
+function openSocket(base, path, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const key = crypto.randomBytes(16).toString('base64');
+    const request = http.request(`${base}${path}`, {
+      headers: { Connection: 'Upgrade', Upgrade: 'websocket', 'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': key, Cookie: SESSION_COOKIE, ...headers },
+    });
+    request.on('upgrade', (response, socket, head) => resolve({ status: 101, key, response, socket, head }));
+    request.on('response', (response) => {
+      response.resume();
+      resolve({ status: response.statusCode });
+    });
+    request.on('error', reject);
+    request.end();
+  });
+}
+
+test('streams video frames over a WebSocket for the View wall', async () => {
+  const base = await start(undefined, { pool: streamPool(), streamAvailable: async () => true, startStream: fakeStream([]) });
+  const { playbackUrl } = await (await postStream(base, { cameraCode: 'CCTV-T1-021' })).json();
+  const opened = await openSocket(base, `${playbackUrl}/ws`, { Origin: base });
+  assert.equal(opened.status, 101);
+  const accept = crypto.createHash('sha1').update(`${opened.key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest('base64');
+  assert.equal(opened.response.headers['sec-websocket-accept'], accept);
+  const bytes = await new Promise((resolve) => {
+    let data = opened.head;
+    opened.socket.on('data', (chunk) => { data = Buffer.concat([data, chunk]); });
+    opened.socket.on('close', () => resolve(data));
+  });
+  assert.equal(bytes[0], 0x82, 'a binary frame');
+  assert.equal(bytes.subarray(2, 2 + bytes[1]).toString(), 'fake fragmented mp4');
+  assert.equal(bytes[2 + bytes[1]], 0x88, 'then a close frame once the camera stream ends');
+});
+
+test('refuses WebSocket streams from another site, without a session, or for an unknown token', async () => {
+  const base = await start(undefined, { pool: streamPool(), streamAvailable: async () => true, startStream: fakeStream([]) });
+  const { playbackUrl } = await (await postStream(base, { cameraCode: 'CCTV-T1-021' })).json();
+  assert.equal((await openSocket(base, `${playbackUrl}/ws`, { Origin: 'http://evil.example' })).status, 403);
+  assert.equal((await openSocket(base, `${playbackUrl}/ws`, { Cookie: '' })).status, 401);
+  assert.equal((await openSocket(base, `/api/streams/${'0'.repeat(32)}/ws`)).status, 404);
 });
 
 test('a stream token cannot be used by another user', async () => {

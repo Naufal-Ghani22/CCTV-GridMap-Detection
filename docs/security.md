@@ -8,7 +8,8 @@
 - Kata sandi disimpan memakai `scrypt` dengan salt acak, minimal 12 karakter. Mengganti kata sandi mengakhiri sesi di komputer lain; menonaktifkan akun mengakhiri semua sesinya.
 - Semua API selain login/logout butuh sesi. Perubahan peta, CCTV, NVR, denah, area, dan akun hanya untuk admin. Minimal satu admin aktif selalu dipertahankan.
 - URL RTSP disimpan memakai AES-256-GCM dan hanya didekripsi di server saat membuka tayangan. Browser hanya mengirim kode CCTV, tidak pernah URL RTSP. Log FFmpeg menyamarkan URL RTSP.
-- Ping dan RTSP hanya ke IPv4 privat (10/8, 172.16/12, 192.168/16). Ping maks. 8 bersamaan; tayangan maks. `MAX_STREAMS` (bawaan 8) dan 4 per pengguna.
+- Ping dan RTSP hanya ke IPv4 privat (10/8, 172.16/12, 192.168/16). Ping maks. 8 bersamaan; tayangan maks. `MAX_STREAMS` (bawaan 8) dan `MAX_STREAMS_PER_USER` per pengguna (bawaan 4).
+- Tayangan WebSocket untuk View memerlukan sesi login, token milik pengguna itu, dan header `Origin` dari host yang sama.
 - Setiap respons membawa `Content-Security-Policy` (tanpa skrip inline/eksternal), `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, dan `X-Content-Type-Options: nosniff`. Aplikasi tidak memuat font atau skrip dari internet.
 - Denah SVG impor disaring di browser dan ditolak server bila memuat skrip, `on*=`, `foreignObject`, atau `javascript:`.
 - Semua perubahan tercatat di `activity_history` beserta pelakunya.

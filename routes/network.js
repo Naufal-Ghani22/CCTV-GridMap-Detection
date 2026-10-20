@@ -59,6 +59,16 @@ function stream({ request, response, params, user, deps }) {
   return deps.streams.handle(request, response, params[0], user);
 }
 
+// Lets the View wall size itself to the server's limits instead of pushing out its own tiles.
+async function streamInfo({ response, user, deps }) {
+  return sendJson(response, 200, {
+    ...deps.streams.limits(),
+    active: deps.streams.count(),
+    mine: deps.streams.countFor(user.id),
+    available: await deps.streamAvailable(),
+  });
+}
+
 async function monitorStatus({ response, deps }) {
   return sendJson(response, 200, deps.monitor.snapshot());
 }
@@ -75,4 +85,4 @@ function events({ request, response, user, deps }) {
   deps.hub.connect(request, response, user);
 }
 
-module.exports = { createStream, events, monitorRun, monitorStatus, ping, stream };
+module.exports = { createStream, events, monitorRun, monitorStatus, ping, stream, streamInfo };

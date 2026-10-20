@@ -35,6 +35,6 @@ npm run db:smoke         # cek instalasi baru masih kosong
 npm run db:reset-admin   # setel ulang akun admin dari .env
 ```
 
-Opsi `.env` tambahan: `PORT`, `MONITOR_INTERVAL_SEC`, `MAX_STREAMS`, `STREAM_VIDEO_CODEC=copy`, `MONITOR_DISABLED=1`.
+Opsi `.env` tambahan: `PORT`, `MONITOR_INTERVAL_SEC`, `MAX_STREAMS`, `MAX_STREAMS_PER_USER`, `STREAM_VIDEO_CODEC=copy`, `MONITOR_DISABLED=1`. Grid tayangan **View** (1/4/9/16/kustom, bisa dibuka di jendela terpisah) dijelaskan di [Operasi CCTV](docs/operations.md#view-grid-tayangan).
 
 `.env` berisi rahasia server dan tidak boleh masuk Git, backup database, atau chat.
