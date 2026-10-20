@@ -68,7 +68,7 @@ const cameraLayer = $('#cameraLayer');
 /* ---------------------------------------------------------------- utils */
 
 function loadPrefs() {
-  const defaults = { theme: 'dark', sound: true, fov: true, labels: true, floor: 'gf', wallLayout: '4', wallCols: 2, wallRows: 2, wallFloor: 'all', wallRotate: 0, wallOrder: [] };
+  const defaults = { theme: 'dark', sound: true, fov: true, labels: true, floor: 'gf', wallLayout: '4', wallCols: 2, wallRows: 2, wallFloor: 'all', wallArea: 'all', wallRotate: 0, wallOrder: [] };
   try {
     return { ...defaults, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
   } catch {
@@ -1742,7 +1742,9 @@ function wallSize() {
 function wallCameras() {
   const order = new Map((prefs.wallOrder || []).map((id, index) => [id, index]));
   return state.cameras
-    .filter((camera) => camera.hasStream && (prefs.wallFloor === 'all' || camera.floor === prefs.wallFloor))
+    .filter((camera) => camera.hasStream
+      && (prefs.wallFloor === 'all' || camera.floor === prefs.wallFloor)
+      && (prefs.wallArea === 'all' || camera.area === prefs.wallArea))
     .sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity) || a.id.localeCompare(b.id));
 }
 
@@ -1917,7 +1919,8 @@ function paintWallTile(tile, camera, optionsKey, options) {
 function wallNote(count, slots) {
   const limits = wall.limits;
   if (!count) {
-    const where = prefs.wallFloor === 'all' ? '' : ` di ${FLOORS[prefs.wallFloor].toLowerCase()}`;
+    const places = [prefs.wallArea === 'all' ? '' : `area ${prefs.wallArea}`, prefs.wallFloor === 'all' ? '' : FLOORS[prefs.wallFloor].toLowerCase()].filter(Boolean);
+    const where = places.length ? ` di ${places.join(', ')}` : '';
     return `Belum ada CCTV${where} yang memiliki URL tayangan RTSP. ${isAdmin() ? 'Atur di Pengaturan › Tayangan kamera.' : 'Minta administrator mengaturnya.'}`;
   }
   if (limits && !limits.available) return `${count} CCTV siap ditayangkan, tetapi komponen tayangan RTSP (FFmpeg) belum terpasang di server.`;
@@ -1940,8 +1943,27 @@ function syncWallControls() {
   $('#wallRotate').value = String(prefs.wallRotate || 0);
 }
 
+// Area groups (like monitor groups in an NVR): every area in Settings or on a camera, with how many can stream.
+function syncWallAreas() {
+  const select = $('#wallArea');
+  const streaming = new Map();
+  for (const camera of state.cameras) {
+    if (camera.area) streaming.set(camera.area, (streaming.get(camera.area) || 0) + (camera.hasStream ? 1 : 0));
+  }
+  for (const area of state.settings.areas || []) if (!streaming.has(area)) streaming.set(area, 0);
+  const areas = [...streaming.keys()].sort((a, b) => a.localeCompare(b, 'id'));
+  if (prefs.wallArea !== 'all' && !streaming.has(prefs.wallArea)) prefs.wallArea = 'all';
+  const key = areas.map((area) => `${area}:${streaming.get(area)}`).join('|');
+  if (select.dataset.key !== key) {
+    select.innerHTML = `<option value="all">Semua area</option>${areas.map((area) => `<option value="${escapeHtml(area)}">${escapeHtml(area)} (${streaming.get(area)})</option>`).join('')}`;
+    select.dataset.key = key;
+  }
+  select.value = prefs.wallArea;
+}
+
 function renderWall() {
   if (state.view !== 'view' || !state.user) return;
+  syncWallAreas();
   const [cols, rows] = wallSize();
   const slots = cols * rows;
   const list = wallCameras();
@@ -2841,6 +2863,13 @@ $$('#wallLayouts button').forEach((button) => button.addEventListener('click', (
   const side = (value) => Math.min(WALL_MAX_SIDE, Math.max(1, Math.round(Number(value)) || 1));
   setWallLayout('custom', side($('#wallCols').value), side($('#wallRows').value));
 }));
+$('#wallArea').addEventListener('change', (event) => {
+  prefs.wallArea = event.target.value;
+  savePrefs();
+  wall.page = 0;
+  wall.solo = null;
+  renderWall();
+});
 $('#wallFloor').addEventListener('change', (event) => {
   prefs.wallFloor = event.target.value;
   savePrefs();

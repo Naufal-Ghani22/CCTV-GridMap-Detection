@@ -117,6 +117,9 @@ test('View shows a video grid whose size can be chosen', { skip: !findBrowser() 
   await page.eval("const cols = document.querySelector('#wallCols'); cols.value = '4'; cols.dispatchEvent(new Event('change'))");
   await page.waitFor("document.querySelectorAll('#wallGrid .wall-tile').length === 12");
   assert.equal(await page.eval("getComputedStyle(document.querySelector('#wallGrid')).gridTemplateColumns.split(' ').length"), 4);
+  assert.equal(await page.eval("[...document.querySelectorAll('#wallArea option')].some((option) => option.value === 'Boarding')"), true, 'area groups listed');
+  await page.eval("const area = document.querySelector('#wallArea'); area.value = 'Boarding'; area.dispatchEvent(new Event('change'))");
+  assert.match(await page.eval("document.querySelector('#wallNote').textContent"), /area Boarding|CCTV dengan tayangan|siap ditayangkan/);
   if (shots) await page.screenshot(path.join(shots, 'e2e-view.png'));
   assert.deepEqual(page.errors, []);
 });
