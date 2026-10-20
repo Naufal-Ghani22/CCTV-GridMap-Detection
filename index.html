@@ -46,6 +46,7 @@
       <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+      <symbol id="i-cam-off" viewBox="0 0 24 24"><path d="M3.5 8.5h11.7l4.8-2.9v12.8l-4.8-2.9H3.5z"/><path d="M3 3l18 18"/></symbol>
       <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7.5" height="6.5" rx="1"/><rect x="13" y="4.5" width="7.5" height="6.5" rx="1"/><rect x="3.5" y="13" width="7.5" height="6.5" rx="1"/><rect x="13" y="13" width="7.5" height="6.5" rx="1"/></symbol>
       <symbol id="i-next" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M20 4v5h-5"/></symbol>
@@ -111,20 +112,45 @@
         <main id="mainContent" tabindex="-1">
           <!-- RINGKASAN -->
           <section class="page-view" id="homeView" data-page="home">
-            <div class="kpi-row" aria-label="Ringkasan operasional">
-              <button type="button" class="kpi" data-kpi="all"><span>Total CCTV</span><strong id="dashTotal">0</strong><small id="dashCoverage">0 area</small></button>
-              <button type="button" class="kpi ok" data-kpi="normal"><span>Online normal</span><strong id="dashHealth">0%</strong><div class="meter" aria-hidden="true"><i id="dashHealthBar"></i></div></button>
-              <button type="button" class="kpi danger" data-kpi="offline"><span>Offline</span><strong id="dashOffline">0</strong><small>Tidak merespons / dilaporkan</small></button>
-              <button type="button" class="kpi warn" data-kpi="warning"><span>Perlu perhatian</span><strong id="dashWarning">0</strong><small>Ada laporan gangguan</small></button>
-              <button type="button" class="kpi" data-kpi="reports"><span>Laporan aktif</span><strong id="dashReports">0</strong><small id="dashCritical">0 kritis</small></button>
+            <div class="dash-top">
+              <section class="card dash-hero" aria-labelledby="dashHeroTitle">
+                <header class="dash-hero-head">
+                  <h2 id="dashHeroTitle">Kesehatan sistem</h2>
+                  <span class="status-label" id="dashVerdict">—</span>
+                  <span class="dash-updated" id="dashUpdated"></span>
+                </header>
+                <div class="dash-hero-body">
+                  <div class="dash-figure"><strong id="dashHealth">—</strong><span id="dashHealthText">CCTV beroperasi normal</span></div>
+                  <dl class="dash-facts">
+                    <div><dt>Total CCTV</dt><dd id="dashTotal">0</dd></div>
+                    <div><dt>Cakupan</dt><dd id="dashCoverage">0 area</dd></div>
+                    <div><dt>Punya tayangan</dt><dd id="dashStreams">0</dd></div>
+                    <div><dt>Median ping</dt><dd id="dashLatency">—</dd></div>
+                  </dl>
+                </div>
+                <div class="status-bar" id="dashStatusBar" role="img"></div>
+                <ul class="chart-legend" id="dashStatusLegend"></ul>
+              </section>
+              <div class="kpi-grid" aria-label="Ringkasan operasional">
+                <button type="button" class="kpi ok" data-kpi="normal"><span class="kpi-icon"><svg><use href="#i-check"/></svg></span><span class="kpi-label">Online normal</span><strong id="dashOnline">0</strong><small id="dashOnlineOf">dari 0 CCTV</small><div class="meter" aria-hidden="true"><i id="dashHealthBar"></i></div></button>
+                <button type="button" class="kpi danger" data-kpi="offline"><span class="kpi-icon"><svg><use href="#i-cam-off"/></svg></span><span class="kpi-label">Offline</span><strong id="dashOffline">0</strong><small id="dashOfflineNote">Tidak merespons ping</small></button>
+                <button type="button" class="kpi warn" data-kpi="warning"><span class="kpi-icon"><svg><use href="#i-alert"/></svg></span><span class="kpi-label">Perlu perhatian</span><strong id="dashWarning">0</strong><small>Ada laporan gangguan</small></button>
+                <button type="button" class="kpi info" data-kpi="reports"><span class="kpi-icon"><svg><use href="#i-list"/></svg></span><span class="kpi-label">Laporan aktif</span><strong id="dashReports">0</strong><small id="dashCritical">0 kritis</small></button>
+              </div>
             </div>
             <div class="dash-grid">
-              <section class="card span-2"><header class="card-head"><div><h2>Perlu ditangani</h2><p>Offline lebih dulu, lalu yang dilaporkan.</p></div><button class="text-button" id="viewAllIssues" type="button">Buka peta</button></header><div id="dashboardAlerts" class="alert-list"></div></section>
+              <section class="card span-2 row-span-2"><header class="card-head"><div><h2>Status per area</h2><p>Panjang batang = jumlah CCTV. Klik untuk membuka daftarnya.</p></div><ul class="chart-legend compact" aria-hidden="true"><li><i class="normal"></i>Normal</li><li><i class="warning"></i>Perhatian</li><li><i class="offline"></i>Offline</li></ul></header><div id="areaBreakdown" class="hbar-chart"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Per lantai</h2><p>Klik untuk membuka denahnya.</p></div></header><div id="floorBreakdown" class="hbar-chart"></div></section>
               <section class="card"><header class="card-head"><div><h2>Server NVR</h2><p id="nvrSummary">Belum ada NVR terdaftar.</p></div><button class="text-button admin-only" id="dashRunMonitor" type="button">Periksa sekarang</button></header><div id="nvrList" class="nvr-list"></div></section>
-              <section class="card"><header class="card-head"><div><h2>Per lantai</h2><p>Sebaran status kamera.</p></div></header><div id="floorBreakdown" class="floor-breakdown"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Laporan gangguan</h2><p id="reportTrendNote">14 hari terakhir</p></div><strong class="card-figure" id="reportTrendTotal">0</strong></header><div id="reportTrend" class="col-chart"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Kejadian offline</h2><p id="offlineTrendNote">14 hari terakhir</p></div><strong class="card-figure" id="offlineTrendTotal">0</strong></header><div id="offlineTrend" class="col-chart"></div></section>
+              <section class="card wide-md"><header class="card-head"><div><h2>Kualitas ping</h2><p id="latencyNote">Waktu respons terakhir CCTV online.</p></div></header><div id="latencyChart" class="col-chart labeled"></div></section>
+              <section class="card span-2 row-span-2"><header class="card-head"><div><h2>Perlu ditangani</h2><p>Offline lebih dulu, lalu yang dilaporkan.</p></div><button class="text-button" id="viewAllIssues" type="button">Buka peta</button></header><div id="dashboardAlerts" class="alert-list"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Alur laporan</h2><p>Status dan prioritas laporan.</p></div></header><div id="reportPipeline" class="pipeline"></div></section>
               <section class="card"><header class="card-head"><div><h2>Laporan terbaru</h2><p>Gangguan yang baru dicatat.</p></div><button class="text-button" id="viewAllReports" type="button">Semua laporan</button></header><div id="dashboardReports" class="compact-list"></div></section>
-              <section class="card"><header class="card-head"><div><h2>Aktivitas terakhir</h2><p>Dari semua petugas dan sistem.</p></div><button class="text-button" id="viewAllHistory" type="button">Riwayat</button></header><div id="dashboardHistory" class="compact-list"></div></section>
+              <section class="card span-3"><header class="card-head"><div><h2>Aktivitas terakhir</h2><p>Dari semua petugas dan sistem.</p></div><button class="text-button" id="viewAllHistory" type="button">Riwayat</button></header><div id="dashboardHistory" class="timeline-mini"></div></section>
             </div>
+            <div class="chart-tip hidden" id="dashTip" role="tooltip"></div>
           </section>
 
           <!-- PETA -->

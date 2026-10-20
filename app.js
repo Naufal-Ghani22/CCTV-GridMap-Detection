@@ -1264,6 +1264,7 @@ function renderMonitor() {
     ? `Aktif setiap ${monitor.intervalSec} detik. Pemeriksaan terakhir ${relativeTime(monitor.lastRunAt)}${monitor.lastDurationMs != null ? ` (${(monitor.lastDurationMs / 1000).toFixed(1)} dtk)` : ''}.${monitor.lastError ? ` Galat: ${monitor.lastError}` : ''}`
     : 'Monitor tidak berjalan di server ini (MONITOR_DISABLED).';
   if (document.activeElement !== $('#monitorInterval')) $('#monitorInterval').value = monitor.intervalSec;
+  renderDashUpdated();
   renderNvrStatus();
 }
 
@@ -1293,40 +1294,210 @@ function applyLayers() {
 
 /* ---------------------------------------------------------------- dashboard */
 
+const STATUS_KEYS = ['normal', 'warning', 'offline'];
+const DAY_MS = 86400000;
+const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' });
+const dayLabel = new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' });
+const shortDay = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' });
+const LATENCY_BUCKETS = [[5, '<5 ms'], [20, '5–20'], [50, '20–50'], [100, '50–100'], [Infinity, '>100']];
+
+function statusCounts(list) {
+  const counts = { normal: 0, warning: 0, offline: 0 };
+  for (const camera of list) if (camera.status in counts) counts[camera.status] += 1;
+  return counts;
+}
+
+function statusTip(title, counts) {
+  return [title, ...STATUS_KEYS.map((key) => `${statusText(key)}: ${counts[key]}`)].join('\n');
+}
+
+// Status segments of one bar; the 2px gaps between them come from CSS. Width is relative to the largest group.
+function stackedBar(counts, total, scale) {
+  const segments = STATUS_KEYS.filter((key) => counts[key]).map((key) => `<i class="${key}" style="flex-grow:${counts[key]}"></i>`).join('');
+  return `<span class="hbar-track"><span class="hbar-fill" style="width:${scale ? (total / scale) * 100 : 0}%">${segments}</span></span>`;
+}
+
+function hbarRows(groups, attribute) {
+  const scale = Math.max(1, ...groups.map((group) => group.list.length));
+  return groups.map(({ key, label, list }) => {
+    const counts = statusCounts(list);
+    const note = counts.offline ? `${counts.offline} offline` : counts.warning ? `${counts.warning} perhatian` : '';
+    return `<button type="button" class="hbar-row" ${attribute}="${escapeHtml(key)}" data-tip="${escapeHtml(statusTip(`${label} · ${list.length} CCTV`, counts))}"><span class="hbar-label">${escapeHtml(label)}</span>${stackedBar(counts, list.length, scale)}<span class="hbar-value"><b>${list.length}</b>${note ? `<small>${note}</small>` : ''}</span></button>`;
+  }).join('');
+}
+
+// Counts per Jakarta calendar day for the last `days` days, oldest first.
+function dailyCounts(dates, days = 14) {
+  const keys = Array.from({ length: days }, (_, index) => dayKey.format(new Date(Date.now() - (days - 1 - index) * DAY_MS)));
+  const counts = new Map(keys.map((key) => [key, 0]));
+  for (const value of dates) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) continue;
+    const key = dayKey.format(date);
+    if (counts.has(key)) counts.set(key, counts.get(key) + 1);
+  }
+  return keys.map((key, index) => {
+    const date = new Date(`${key}T12:00:00+07:00`);
+    const axis = index === days - 1 ? 'Hari ini' : index === 0 || index === Math.floor(days / 2) ? shortDay.format(date) : '';
+    return { label: dayLabel.format(date), axis, count: counts.get(key) };
+  });
+}
+
+function niceCeiling(max) {
+  const step = max <= 5 ? 1 : max <= 10 ? 2 : max <= 50 ? 10 : 10 ** Math.floor(Math.log10(max));
+  return Math.max(2, Math.ceil(max / step) * step);
+}
+
+// Single-series column chart: thin bars from one baseline, only the tallest labeled, every column hoverable.
+function columnChart(points, { tone, unit, empty, everyLabel = false }) {
+  const max = Math.max(0, ...points.map((point) => point.count));
+  if (!max) return `<div class="chart-empty">${empty}</div>`;
+  const top = niceCeiling(max);
+  const peak = points.findIndex((point) => point.count === max);
+  const columns = points.map((point, index) => `<span class="col" data-tip="${escapeHtml(`${point.label}\n${point.count} ${unit}`)}" tabindex="0">${index === peak ? `<em style="bottom:${(point.count / top) * 100}%">${point.count}</em>` : ''}<i class="${tone}" style="height:${(point.count / top) * 100}%"></i></span>`).join('');
+  const axis = points.map((point) => `<span>${escapeHtml(everyLabel ? point.label : point.axis)}</span>`).join('');
+  const summary = points.map((point) => `${point.label}: ${point.count}`).join(', ');
+  return `<div class="col-plot" role="img" aria-label="${escapeHtml(summary)}"><span class="col-grid" data-top="${top}"></span><div class="col-bars">${columns}</div></div><div class="col-axis">${axis}</div>`;
+}
+
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+}
+
 function renderDashboard() {
   const cams = state.cameras;
-  const count = (status) => cams.filter((camera) => camera.status === status).length;
-  const normal = count('normal');
-  const offline = count('offline');
-  const warning = count('warning');
-  const health = cams.length ? Math.round((normal / cams.length) * 100) : 0;
+  const counts = statusCounts(cams);
+  const total = cams.length;
   const active = state.reports.filter((report) => report.status !== 'resolved');
-  $('#dashTotal').textContent = cams.length;
-  $('#dashCoverage').textContent = `${new Set(cams.map((camera) => camera.area)).size} area · ${FLOOR_ORDER.length} lantai`;
-  $('#dashHealth').textContent = `${health}%`;
-  $('#dashHealthBar').style.width = `${health}%`;
-  $('#dashOffline').textContent = offline;
-  $('#dashWarning').textContent = warning;
-  $('#dashReports').textContent = active.length;
-  $('#dashCritical').textContent = `${active.filter((report) => report.priority === 'critical').length} kritis`;
-  $('.kpi[data-kpi="offline"]').classList.toggle('alive', offline > 0);
+  const latencies = cams.filter((camera) => camera.lastPing?.status === 'online' && Number.isFinite(camera.lastPing.latencyMs)).map((camera) => camera.lastPing.latencyMs);
+  const health = total ? Math.round((counts.normal / total) * 100) : null;
+  const middle = median(latencies);
 
+  // Hero: the one number this page leads with, plus the status composition behind it.
+  $('#dashHealth').textContent = health === null ? '—' : `${health}%`;
+  $('#dashHealthText').textContent = total ? `${counts.normal} dari ${total} CCTV beroperasi normal` : 'Belum ada CCTV terdaftar';
+  const verdict = $('#dashVerdict');
+  verdict.className = `status-label ${counts.offline ? 'offline' : counts.warning ? 'warning' : 'normal'}${total ? '' : ' hidden'}`;
+  verdict.textContent = counts.offline ? 'Ada gangguan' : counts.warning ? 'Perlu perhatian' : 'Semua normal';
+  $('#dashTotal').textContent = total;
+  $('#dashCoverage').textContent = `${new Set(cams.map((camera) => camera.area).filter(Boolean)).size} area · ${new Set(cams.map((camera) => camera.floor)).size} lantai`;
+  $('#dashStreams').textContent = `${cams.filter((camera) => camera.hasStream).length} CCTV`;
+  $('#dashLatency').textContent = middle === null ? '—' : `${middle} ms`;
+  const bar = $('#dashStatusBar');
+  bar.innerHTML = total
+    ? STATUS_KEYS.filter((key) => counts[key]).map((key) => `<i class="${key}" style="flex-grow:${counts[key]}" data-tip="${escapeHtml(`${statusText(key)}\n${counts[key]} CCTV · ${Math.round((counts[key] / total) * 100)}%`)}"></i>`).join('')
+    : '<i class="empty"></i>';
+  bar.setAttribute('aria-label', total ? STATUS_KEYS.map((key) => `${statusText(key)} ${counts[key]}`).join(', ') : 'Belum ada CCTV');
+  $('#dashStatusLegend').innerHTML = STATUS_KEYS.map((key) => `<li><i class="${key}"></i>${statusText(key)}<b>${counts[key]}</b><small>${total ? Math.round((counts[key] / total) * 100) : 0}%</small></li>`).join('');
+  renderDashUpdated();
+
+  // KPI tiles
+  const byPing = cams.filter((camera) => camera.status === 'offline' && camera.statusSource === 'ping').length;
+  const critical = active.filter((report) => report.priority === 'critical').length;
+  const high = active.filter((report) => report.priority === 'high').length;
+  $('#dashOnline').textContent = counts.normal;
+  $('#dashOnlineOf').textContent = `dari ${total} CCTV · ${health ?? 0}%`;
+  $('#dashHealthBar').style.width = `${health ?? 0}%`;
+  $('#dashOffline').textContent = counts.offline;
+  $('#dashOfflineNote').textContent = counts.offline ? `${byPing} tidak merespons ping${counts.offline - byPing ? ` · ${counts.offline - byPing} dilaporkan` : ''}` : 'Semua merespons';
+  $('#dashWarning').textContent = counts.warning;
+  $('#dashReports').textContent = active.length;
+  $('#dashCritical').textContent = `${critical} kritis · ${high} tinggi`;
+  $('.kpi[data-kpi="offline"]').classList.toggle('alive', counts.offline > 0);
+
+  // Status per area (most trouble first) and per floor
+  const issueCount = (group) => group.list.filter((camera) => camera.status !== 'normal').length;
+  const areas = [...new Set(cams.map((camera) => camera.area).filter(Boolean))]
+    .map((area) => ({ key: area, label: area, list: cams.filter((camera) => camera.area === area) }))
+    .sort((a, b) => issueCount(b) - issueCount(a) || b.list.length - a.list.length || a.label.localeCompare(b.label, 'id'));
+  $('#areaBreakdown').innerHTML = areas.length
+    ? hbarRows(areas.slice(0, 8), 'data-area-jump') + (areas.length > 8 ? `<p class="muted small">+${areas.length - 8} area lainnya di halaman Perangkat.</p>` : '')
+    : '<div class="chart-empty">Belum ada CCTV dengan area.</div>';
+  $('#floorBreakdown').innerHTML = hbarRows(FLOOR_ORDER.map((floor) => ({ key: floor, label: FLOORS[floor], list: cams.filter((camera) => camera.floor === floor) })), 'data-floor-jump');
+
+  // Trends. The browser holds the newest 300 reports and history items; say so if 14 days do not fit.
+  const partial = (list) => (list.length >= 300 && new Date(list[list.length - 1].createdAt).getTime() > Date.now() - 14 * DAY_MS ? ' · 300 data terakhir' : '');
+  const reportDays = dailyCounts(state.reports.map((report) => report.createdAt));
+  $('#reportTrendTotal').textContent = reportDays.reduce((sum, day) => sum + day.count, 0);
+  $('#reportTrendNote').textContent = `Laporan baru per hari · 14 hari${partial(state.reports)}`;
+  $('#reportTrend').innerHTML = columnChart(reportDays, { tone: 'accent', unit: 'laporan', empty: 'Tidak ada laporan dalam 14 hari terakhir.' });
+  const offlineDays = dailyCounts(state.history.filter((item) => item.action === 'Perangkat offline').map((item) => item.createdAt));
+  $('#offlineTrendTotal').textContent = offlineDays.reduce((sum, day) => sum + day.count, 0);
+  $('#offlineTrendNote').textContent = `CCTV berubah offline per hari · 14 hari${partial(state.history)}`;
+  $('#offlineTrend').innerHTML = columnChart(offlineDays, { tone: 'offline', unit: 'kejadian offline', empty: 'Tidak ada CCTV yang offline dalam 14 hari terakhir.' });
+
+  // Ping quality: where the latest response times of online cameras fall.
+  const buckets = LATENCY_BUCKETS.map(([limit, label], index) => ({
+    label,
+    count: latencies.filter((value) => value < limit && (index === 0 || value >= LATENCY_BUCKETS[index - 1][0])).length,
+  }));
+  $('#latencyNote').textContent = latencies.length ? `${latencies.length} CCTV online · median ${middle} ms` : 'Waktu respons terakhir CCTV online.';
+  $('#latencyChart').innerHTML = columnChart(buckets, { tone: 'accent', unit: 'CCTV', empty: 'Belum ada hasil ping dari CCTV online.', everyLabel: true });
+
+  // Issues to handle
   const issues = cams.filter((camera) => camera.status !== 'normal').sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.id.localeCompare(b.id));
-  $('#dashboardAlerts').innerHTML = issues.length ? issues.slice(0, 8).map((camera) => {
+  $('#dashboardAlerts').innerHTML = issues.length ? issues.slice(0, 6).map((camera) => {
     const why = camera.statusSource === 'ping' ? `Tidak merespons ping · ${relativeTime(camera.lastPing?.checkedAt)}` : (state.reports.find((report) => report.cameraId === camera.id && report.status !== 'resolved')?.issue || 'Status manual');
     return `<button type="button" class="alert-item" data-camera="${escapeHtml(camera.id)}"><i class="status-dot ${camera.status}"></i><span><strong class="mono">${escapeHtml(camera.id)}</strong><small>${escapeHtml(camera.location)} · ${FLOORS[camera.floor]} · ${escapeHtml(why)}</small></span><span class="status-label ${camera.status}">${statusText(camera.status)}</span></button>`;
-  }).join('') + (issues.length > 8 ? `<p class="muted small">+${issues.length - 8} lainnya di peta.</p>` : '') : '<div class="empty-note">Semua CCTV beroperasi normal.</div>';
+  }).join('') + (issues.length > 6 ? `<p class="muted small">+${issues.length - 6} lainnya di peta.</p>` : '') : '<div class="empty-note">Semua CCTV beroperasi normal.</div>';
 
-  $('#floorBreakdown').innerHTML = FLOOR_ORDER.map((floor) => {
-    const list = cams.filter((camera) => camera.floor === floor);
-    const total = Math.max(list.length, 1);
-    const part = (status) => list.filter((camera) => camera.status === status).length;
-    return `<button type="button" class="floor-row text-reset" data-floor-jump="${floor}" style="all:unset;cursor:pointer;display:block"><header><span>${FLOORS[floor]}</span><span class="muted">${list.length} CCTV · ${part('offline')} offline</span></header><div class="stack-bar">${['normal', 'warning', 'offline'].map((status) => `<i class="${status}" style="width:${(part(status) / total) * 100}%"></i>`).join('')}</div></button>`;
-  }).join('');
+  // Report flow: where open work sits, and how urgent it is.
+  const weekAgo = Date.now() - 7 * DAY_MS;
+  const stages = [
+    ['open', 'Baru', state.reports.filter((report) => report.status === 'open').length],
+    ['progress', 'Dikerjakan', state.reports.filter((report) => report.status === 'progress').length],
+    ['resolved', 'Selesai 7 hari', state.reports.filter((report) => report.status === 'resolved' && new Date(report.resolvedAt || report.updatedAt).getTime() >= weekAgo).length],
+  ];
+  const priorities = [['critical', 'Kritis'], ['high', 'Tinggi'], ['normal', 'Normal']].map(([key, label]) => [key, label, active.filter((report) => report.priority === key).length]);
+  const priorityMax = Math.max(1, ...priorities.map(([, , count]) => count));
+  $('#reportPipeline').innerHTML = `<ol class="pipeline-steps">${stages.map(([key, label, count]) => `<li class="${key}"><b>${count}</b><span>${label}</span></li>`).join('')}</ol>`
+    + `<div class="priority-bars"><p>Laporan aktif per prioritas</p>${priorities.map(([key, label, count]) => `<div class="priority-row" data-tip="${escapeHtml(`Prioritas ${label.toLowerCase()}\n${count} laporan aktif`)}"><span>${label}</span><span class="priority-track"><i class="${key}" style="width:${(count / priorityMax) * 100}%"></i></span><b>${count}</b></div>`).join('')}</div>`;
 
-  $('#dashboardReports').innerHTML = state.reports.length ? state.reports.slice(0, 5).map((report) => `<div class="compact-item"><span><strong>${escapeHtml(report.issue)}</strong><small>${escapeHtml(report.cameraId)} · ${relativeTime(report.createdAt)}</small></span><span class="pill ${report.status}">${reportStatusText(report.status)}</span></div>`).join('') : '<div class="empty-note">Belum ada laporan.</div>';
-  $('#dashboardHistory').innerHTML = state.history.length ? state.history.slice(0, 6).map((item) => `<div class="compact-item"><span><strong>${escapeHtml(item.action)}</strong><small>${escapeHtml(item.detail)} · ${escapeHtml(item.actor)}</small></span><small>${relativeTime(item.createdAt)}</small></div>`).join('') : '<div class="empty-note">Belum ada aktivitas.</div>';
+  $('#dashboardReports').innerHTML = state.reports.length ? state.reports.slice(0, 5).map((report) => `<div class="compact-item"><span><strong>${escapeHtml(report.issue)}</strong><small><span class="mono">${escapeHtml(report.cameraId)}</span> · ${relativeTime(report.createdAt)}</small></span><span class="pill ${report.status}">${reportStatusText(report.status)}</span></div>`).join('') : '<div class="empty-note">Belum ada laporan.</div>';
+  $('#dashboardHistory').innerHTML = state.history.length ? state.history.slice(0, 6).map((item) => {
+    const tone = item.action === 'Perangkat offline' ? 'offline' : item.action === 'Perangkat online' ? 'normal' : '';
+    return `<div class="timeline-mini-item"><i class="status-dot ${tone}"></i><span><strong>${escapeHtml(item.action)}</strong><small>${escapeHtml(item.detail)} · ${escapeHtml(item.actor)}</small></span><time>${relativeTime(item.createdAt)}</time></div>`;
+  }).join('') : '<div class="empty-note">Belum ada aktivitas.</div>';
   renderNvrStatus();
+}
+
+function renderDashUpdated() {
+  const lastRun = state.monitor?.lastRunAt;
+  $('#dashUpdated').textContent = lastRun ? `Ping terakhir ${relativeTime(lastRun)}` : '';
+}
+
+// One shared tooltip for every [data-tip] on the dashboard, by pointer or keyboard focus.
+function initChartTips() {
+  const home = $('#homeView');
+  const tip = $('#dashTip');
+  const place = (x, y) => {
+    const width = tip.offsetWidth;
+    const height = tip.offsetHeight;
+    tip.style.left = `${Math.min(Math.max(8, x + 14), window.innerWidth - width - 8)}px`;
+    tip.style.top = `${y - height - 14 < 8 ? y + 18 : y - height - 14}px`;
+  };
+  const show = (target) => {
+    tip.textContent = target.dataset.tip;
+    tip.classList.remove('hidden');
+  };
+  home.addEventListener('pointermove', (event) => {
+    const target = event.target.closest('[data-tip]');
+    if (!target) return tip.classList.add('hidden');
+    show(target);
+    return place(event.clientX, event.clientY);
+  });
+  home.addEventListener('pointerleave', () => tip.classList.add('hidden'));
+  home.addEventListener('focusin', (event) => {
+    const target = event.target.closest('[data-tip]');
+    if (!target) return;
+    show(target);
+    const box = target.getBoundingClientRect();
+    place(box.left + box.width / 2, box.top);
+  });
+  home.addEventListener('focusout', () => tip.classList.add('hidden'));
 }
 
 function renderNvrStatus() {
@@ -2336,6 +2507,14 @@ $('#floorBreakdown').addEventListener('click', (event) => {
   showView('map');
   setFloor(button.dataset.floorJump);
 });
+$('#areaBreakdown').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-area-jump]');
+  if (!button) return;
+  $('#deviceStatusFilter').value = 'all';
+  $('#deviceAreaFilter').value = button.dataset.areaJump;
+  showView('devices');
+});
+initChartTips();
 $$('.kpi').forEach((kpi) => kpi.addEventListener('click', () => {
   const kind = kpi.dataset.kpi;
   if (kind === 'reports') return showView('reports');
