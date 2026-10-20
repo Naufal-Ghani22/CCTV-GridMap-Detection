@@ -69,7 +69,7 @@ Denah bawaan (`maps/*.svg`) adalah peta indoor yang digambar ulang dari PDF CAD 
 Menu **View** menampilkan tayangan beberapa CCTV sekaligus, seperti monitor NVR.
 
 - Pilih jumlah layar **1**, **4**, **9**, **16**, atau **Kustom** (kolom × baris, maks. 6 × 6). Pilihan disimpan per komputer.
-- Yang tampil hanya CCTV yang sudah punya URL RTSP. Saring per lantai; bila CCTV lebih banyak dari layar, pakai tombol **‹ ›** atau **Rotasi** (ganti halaman tiap 15/30/60 detik).
+- Yang tampil hanya CCTV yang sudah punya URL RTSP. Pilih **kelompok area** (mis. Boarding, Apron; angka di belakangnya = CCTV yang bisa ditayangkan) untuk menampilkan satu area saja, dan saring per lantai; bila CCTV lebih banyak dari layar, pakai tombol **‹ ›** atau **Rotasi** (ganti halaman tiap 15/30/60 detik).
 - Arahkan mouse ke sebuah layar untuk mengganti CCTV di posisi itu (posisinya ditukar), memuat ulang tayangannya, atau memperbesarnya. Klik ganda juga memperbesar; `Esc` kembali ke grid.
 - **Jendela baru** membuka View tanpa menu untuk monitor kedua: geser jendelanya ke monitor itu lalu tekan `F` untuk layar penuh. Toolbar muncul saat mouse digerakkan.
 - Tayangan yang terputus dicoba lagi otomatis (5, 15, 30, lalu 60 detik).
