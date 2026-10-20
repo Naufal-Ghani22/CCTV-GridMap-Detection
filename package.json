@@ -1,0 +1,19 @@
+{
+  "name": "cctv-grid-map",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "test:unit": "node --test tests/server.test.js tests/sessions.test.js tests/config.test.js tests/rtsp-secrets.test.js tests/passwords.test.js tests/validate.test.js tests/monitor.test.js",
+    "test:e2e": "node --test --test-concurrency=1 tests/ui.e2e.js",
+    "db:migrate": "node db/migrate.js",
+    "db:bootstrap": "node db/bootstrap.js",
+    "db:reset-admin": "node db/reset-admin.js",
+    "db:smoke": "node --test tests/database-smoke.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "pg": "^8.23.1"
+  }
+}

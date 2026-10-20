@@ -1,26 +1,73 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CCTV Map | Terminal 1</title>
+    <meta name="color-scheme" content="dark light" />
+    <title>CCTV Map | Ruang Kontrol</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id="fov-normal" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--fov-normal)" stop-opacity=".55"/><stop offset="1" stop-color="var(--fov-normal)" stop-opacity=".06"/></radialGradient>
+        <radialGradient id="fov-warning" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--fov-warning)" stop-opacity=".55"/><stop offset="1" stop-color="var(--fov-warning)" stop-opacity=".06"/></radialGradient>
+        <radialGradient id="fov-offline" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--fov-offline)" stop-opacity=".4"/><stop offset="1" stop-color="var(--fov-offline)" stop-opacity=".04"/></radialGradient>
+        <radialGradient id="fov-selected" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--fov-selected)" stop-opacity=".7"/><stop offset="1" stop-color="var(--fov-selected)" stop-opacity=".12"/></radialGradient>
+      </defs>
+      <symbol id="i-cam" viewBox="0 0 24 24"><path d="M3.5 8.5h11.7l4.8-2.9v12.8l-4.8-2.9H3.5z"/><path d="M7 8.5V6.4h5.3v2.1"/></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-6v-6h-4v6H4z"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 3.5 19h17z"/><path d="M12 9v4M12 16.5v.1"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A7 7 0 0 0 15 6.2L14.7 3h-4L10 6.2a7 7 0 0 0-1.6.9L6 6.1 4 9.5 6.1 11a7 7 0 0 0 0 2L4 14.5 6 18l2.4-1a7 7 0 0 0 1.6.9l.6 3.1h4l.5-3.1a7 7 0 0 0 1.5-.9l2.4 1 2-3.5-2.1-1.5c.1-.3.1-.7.1-1Z"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-fit" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="1.5"/><path d="M7 12h10M9 10l-2 2 2 2M15 10l2 2-2 2"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 17 9-9 3 3-9 9H4zM14 7l2-2 3 3-2 2"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></symbol>
+      <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+      <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l2 2H8"/><path d="M10 20a2 2 0 0 0 4 0M4 4l16 16"/></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 19h14"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M4 14v5h16v-5"/></symbol>
+      <symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    </svg>
+
     <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
       <div class="auth-intro">
-        <div class="auth-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8h11.2l5-3v14l-5-3H3.5z"/><path d="M7 8V5.5h5V8"/></svg><span>CCTV Map<small>Operasi bandara</small></span></div>
-        <div class="auth-message"><p class="context">Terminal 1 · Lantai 2</p><h1>Temukan CCTV yang perlu ditangani.</h1><p>Lihat lokasi, ciri perangkat, dan arah kamera sebelum petugas menuju lapangan.</p><ul class="auth-points"><li><span></span>Status perangkat</li><li><span></span>Posisi dan arah kamera</li><li><span></span>Laporan antar divisi</li></ul></div>
-        <small>Akses khusus petugas sesuai peran dan divisi.</small>
+        <div class="brand-mark"><svg><use href="#i-cam"/></svg><span>CCTV Map<small>Ruang kontrol bandara</small></span></div>
+        <div class="auth-message">
+          <p class="eyebrow">Pemantauan terpusat</p>
+          <h1>Temukan CCTV yang perlu ditangani, lebih cepat.</h1>
+          <p>Lokasi, arah pandang, status jaringan, dan laporan gangguan seluruh kamera dalam satu layar.</p>
+          <ul class="auth-points"><li>Status ping otomatis setiap kamera &amp; NVR</li><li>Arah dan cakupan kamera langsung di denah</li><li>Laporan tersinkron antar ruang kerja</li></ul>
+        </div>
+        <small>Akses khusus petugas. Aktivitas tercatat dalam riwayat audit.</small>
       </div>
       <div class="auth-panel">
         <form class="auth-form" id="loginForm" novalidate>
-          <div><p class="context">Akun petugas</p><h2 id="authTitle">Masuk</h2><p class="auth-copy">Gunakan akun yang diberikan administrator.</p></div>
-          <div class="auth-error hidden" id="authError" role="alert" tabindex="-1"><strong>Login gagal</strong><span>Email atau kata sandi tidak sesuai.</span></div>
-          <label>Email petugas<input id="loginEmail" type="email" autocomplete="username" placeholder="nama@airport.local" aria-describedby="emailError" required /><small class="field-error" id="emailError"></small></label>
+          <p class="eyebrow">Akun petugas</p>
+          <h2 id="authTitle">Masuk</h2>
+          <p class="muted">Gunakan akun yang diberikan administrator.</p>
+          <div class="auth-error hidden" id="authError" role="alert" tabindex="-1"><strong>Login gagal</strong><span></span></div>
+          <label>Email petugas<input id="loginEmail" type="email" autocomplete="username" placeholder="nama@bandara.local" aria-describedby="emailError" required /><small class="field-error" id="emailError"></small></label>
           <label>Kata sandi<span class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" aria-describedby="passwordError" required /><button type="button" id="togglePassword" aria-label="Tampilkan kata sandi">Lihat</button></span><small class="field-error" id="passwordError"></small></label>
-          <button class="button primary auth-submit" id="loginButton" type="submit">Masuk</button>
-          <div class="demo-accounts"><p>Akun uji</p><button type="button" data-demo-account="admin"><span>Isi akun admin</span><small>admin@airport.local · Admin123!</small></button><button type="button" data-demo-account="user"><span>Isi akun pengguna</span><small>user@airport.local · User123!</small></button></div>
+          <button class="button primary block" id="loginButton" type="submit">Masuk</button>
         </form>
       </div>
     </section>
@@ -28,225 +75,356 @@
     <a class="skip-link" href="#mainContent">Lewati navigasi</a>
 
     <div class="app-shell hidden" id="appShell">
-      <aside class="sidebar" aria-label="Navigasi utama">
-        <div class="brand">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8h11.2l5-3v14l-5-3H3.5z"/><path d="M7 8V5.5h5V8"/></svg>
-          <span>CCTV Map<small>Terminal 1</small></span>
-          <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-controls="primaryNavigation" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
-        </div>
-
+      <aside class="rail" aria-label="Navigasi utama">
+        <div class="rail-brand" title="CCTV Map"><svg><use href="#i-cam"/></svg></div>
         <nav id="primaryNavigation">
-          <button class="nav-item active" type="button" data-view="home" aria-current="page">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-6v-6h-4v6H4z"/></svg>Ringkasan
-          </button>
-          <button class="nav-item" type="button" data-view="map">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>Peta
-          </button>
-          <button class="nav-item" type="button" data-view="devices">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Perangkat
-          </button>
-          <button class="nav-item" type="button" data-view="reports">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3.5 19h17z"/><path d="M12 9v4M12 16.5v.1"/></svg>Laporan <span class="nav-count" id="reportBadge">3</span>
-          </button>
-          <button class="nav-item" type="button" data-view="history">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Riwayat
-          </button>
-          <button class="nav-item admin-only" type="button" data-view="settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A7 7 0 0 0 15 6.2L14.7 3h-4L10 6.2a7 7 0 0 0-1.6.9L6 6.1 4 9.5 6.1 11a7 7 0 0 0 0 2L4 14.5 6 18l2.4-1a7 7 0 0 0 1.6.9l.6 3.1h4l.5-3.1a7 7 0 0 0 1.5-.9l2.4 1 2-3.5-2.1-1.5c.1-.3.1-.7.1-1Z"/></svg>Pengaturan
-          </button>
+          <button class="nav-item" type="button" data-view="home"><svg><use href="#i-home"/></svg><span>Ringkasan</span></button>
+          <button class="nav-item" type="button" data-view="map"><svg><use href="#i-map"/></svg><span>Peta</span></button>
+          <button class="nav-item" type="button" data-view="devices"><svg><use href="#i-list"/></svg><span>Perangkat</span></button>
+          <button class="nav-item" type="button" data-view="reports"><svg><use href="#i-alert"/></svg><span>Laporan</span><b class="nav-count hidden" id="reportBadge">0</b></button>
+          <button class="nav-item" type="button" data-view="history"><svg><use href="#i-clock"/></svg><span>Riwayat</span></button>
+          <button class="nav-item admin-only" type="button" data-view="settings"><svg><use href="#i-gear"/></svg><span>Pengaturan</span></button>
         </nav>
-
-        <div class="sidebar-footer">
-          <button class="connection" id="connectionButton" type="button">
-            <span id="connectionDot"></span><span>Jaringan lokal<small id="connectionText">Belum diuji</small></span>
-          </button>
-          <button class="profile" id="profileButton" type="button" aria-label="Buka pengaturan akun">
-            <span class="avatar" id="profileAvatar">AR</span>
-            <span id="profileName">Adi Rachman<small id="roleName">Administrator · TI</small></span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg>
-          </button>
-        </div>
+        <button class="nav-item rail-help" type="button" id="shortcutButton" aria-label="Pintasan keyboard"><svg><use href="#i-keyboard"/></svg><span>Pintasan</span></button>
       </aside>
 
-      <main id="mainContent" tabindex="-1">
-        <header class="page-header">
-          <div><p class="context" id="pageContext">Terminal 1 / Lantai 2</p><h1 id="pageTitle">Peta CCTV</h1></div>
-          <div class="header-actions">
-            <button class="button quiet" type="button" id="reportListButton">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3.5 19h17z"/><path d="M12 9v4M12 16.5v.1"/></svg>
-              <span id="activeReportText">3 laporan aktif</span>
-            </button>
+      <div class="workspace-shell">
+        <header class="topbar">
+          <div class="topbar-title"><p class="eyebrow" id="pageContext">Ruang kontrol</p><h1 id="pageTitle">Ringkasan</h1></div>
+          <button class="global-search" type="button" id="globalSearchButton"><svg><use href="#i-search"/></svg><span>Cari CCTV, lokasi, IP…</span><kbd>/</kbd></button>
+          <div class="topbar-status">
+            <button class="alarm-pill hidden" type="button" id="alarmPill"><i></i><span id="alarmText">0 CCTV offline</span></button>
+            <span class="status-pill" id="syncPill" title="Sinkronisasi antar komputer"><i></i><span id="syncText">Menyambung…</span></span>
+            <span class="status-pill" id="monitorPill" title="Pemantauan ping otomatis"><svg><use href="#i-pulse"/></svg><span id="monitorText">Monitor —</span></span>
+            <time class="clock" id="clock" aria-live="off">--:--:--</time>
+            <button class="icon-button" type="button" id="soundToggle" aria-pressed="true" aria-label="Bunyi alarm"><svg><use href="#i-bell"/></svg></button>
+            <button class="icon-button" type="button" id="themeToggle" aria-label="Ganti tema"><svg><use href="#i-sun"/></svg></button>
+            <button class="profile" id="profileButton" type="button" aria-label="Buka profil"><span class="avatar" id="profileAvatar">--</span><span class="profile-text"><b id="profileName">-</b><small id="roleName">-</small></span></button>
           </div>
         </header>
 
-        <section class="page-view" id="homeView" data-page="home">
-          <div class="dashboard-kpis" aria-label="Ringkasan operasional">
-            <article><span>Total perangkat</span><strong id="dashTotal">0</strong><small id="dashCoverage">0 area dipantau</small></article>
-            <article><span>Perangkat normal</span><strong id="dashHealth">0%</strong><div class="health-track" aria-hidden="true"><i id="dashHealthBar"></i></div></article>
-            <article><span>Perlu ditangani</span><strong id="dashIssues">0</strong><small>CCTV perhatian atau offline</small></article>
-            <article><span>Laporan aktif</span><strong id="dashReports">0</strong><small id="dashCritical">0 prioritas kritis</small></article>
-          </div>
-
-          <div class="dashboard-grid">
-            <section class="dashboard-card dashboard-alerts"><div class="card-heading"><div><h2>Perlu ditangani</h2><p>Offline dan perlu perhatian.</p></div><button class="text-button" id="viewAllIssues" type="button">Buka peta</button></div><div id="dashboardAlerts"></div></section>
-            <section class="dashboard-card"><div class="card-heading"><div><h2>Status perangkat</h2><p>Kondisi seluruh CCTV.</p></div></div><div class="status-breakdown" id="statusBreakdown"></div></section>
-            <section class="dashboard-card dashboard-reports"><div class="card-heading"><div><h2>Laporan terbaru</h2><p>Gangguan yang baru dicatat.</p></div><button class="text-button" id="viewAllReports" type="button">Buka laporan</button></div><div id="dashboardReports"></div></section>
-            <section class="dashboard-card"><div class="card-heading"><div><h2>Kesiapan sistem</h2><p>Koneksi dan sumber denah.</p></div></div><dl class="system-list"><div><dt>Jaringan NVR</dt><dd id="dashNetwork">Belum diuji</dd></div><div><dt>Denah aktif</dt><dd id="dashMapSource">Bawaan</dd></div><div><dt>Aktivitas terakhir</dt><dd id="dashLastActivity">Belum ada</dd></div></dl><div class="quick-actions"><button class="button" id="dashboardMapButton" type="button">Buka peta</button><button class="button primary" id="dashboardReportButton" type="button">Buat laporan</button></div></section>
-          </div>
-        </section>
-
-        <section class="page-view hidden" id="mapView" data-page="map">
-          <section class="status-strip" aria-label="Ringkasan status CCTV">
-            <div><strong id="totalCount">0</strong><span>Total</span></div>
-            <div><i class="status-dot normal"></i><strong id="healthyCount">0</strong><span>Normal</span></div>
-            <div><i class="status-dot warning"></i><strong id="warningCount">0</strong><span>Perhatian</span></div>
-            <div><i class="status-dot offline"></i><strong id="offlineCount">0</strong><span>Offline</span></div>
-            <span class="updated" id="lastUpdated">Status perangkat tersimpan lokal</span>
+        <main id="mainContent" tabindex="-1">
+          <!-- RINGKASAN -->
+          <section class="page-view" id="homeView" data-page="home">
+            <div class="kpi-row" aria-label="Ringkasan operasional">
+              <button type="button" class="kpi" data-kpi="all"><span>Total CCTV</span><strong id="dashTotal">0</strong><small id="dashCoverage">0 area</small></button>
+              <button type="button" class="kpi ok" data-kpi="normal"><span>Online normal</span><strong id="dashHealth">0%</strong><div class="meter" aria-hidden="true"><i id="dashHealthBar"></i></div></button>
+              <button type="button" class="kpi danger" data-kpi="offline"><span>Offline</span><strong id="dashOffline">0</strong><small>Tidak merespons / dilaporkan</small></button>
+              <button type="button" class="kpi warn" data-kpi="warning"><span>Perlu perhatian</span><strong id="dashWarning">0</strong><small>Ada laporan gangguan</small></button>
+              <button type="button" class="kpi" data-kpi="reports"><span>Laporan aktif</span><strong id="dashReports">0</strong><small id="dashCritical">0 kritis</small></button>
+            </div>
+            <div class="dash-grid">
+              <section class="card span-2"><header class="card-head"><div><h2>Perlu ditangani</h2><p>Offline lebih dulu, lalu yang dilaporkan.</p></div><button class="text-button" id="viewAllIssues" type="button">Buka peta</button></header><div id="dashboardAlerts" class="alert-list"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Server NVR</h2><p id="nvrSummary">Belum ada NVR terdaftar.</p></div><button class="text-button admin-only" id="dashRunMonitor" type="button">Periksa sekarang</button></header><div id="nvrList" class="nvr-list"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Per lantai</h2><p>Sebaran status kamera.</p></div></header><div id="floorBreakdown" class="floor-breakdown"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Laporan terbaru</h2><p>Gangguan yang baru dicatat.</p></div><button class="text-button" id="viewAllReports" type="button">Semua laporan</button></header><div id="dashboardReports" class="compact-list"></div></section>
+              <section class="card"><header class="card-head"><div><h2>Aktivitas terakhir</h2><p>Dari semua petugas dan sistem.</p></div><button class="text-button" id="viewAllHistory" type="button">Riwayat</button></header><div id="dashboardHistory" class="compact-list"></div></section>
+            </div>
           </section>
 
-          <section class="workspace">
-            <div class="map-panel">
-              <div class="toolbar">
-                <div class="toolbar-filters">
-                  <label class="search-field">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-                    <span class="sr-only">Cari CCTV</span>
-                    <input id="search" type="search" placeholder="Cari ID atau lokasi" autocomplete="off" />
-                  </label>
-                  <label class="select-field"><span class="sr-only">Filter status</span><select id="mapStatusFilter"><option value="all">Semua status</option><option value="normal">Normal</option><option value="warning">Perhatian</option><option value="offline">Offline</option></select></label>
-                </div>
-                <div class="toolbar-actions admin-only">
-                  <button class="button" id="adminToggle" type="button" aria-pressed="false">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 9-9 3 3-9 9H4zM14 7l2-2 3 3-2 2"/></svg><span id="adminButtonText">Edit peta</span>
-                  </button>
-                  <button class="button primary" id="addCamera" type="button">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah CCTV
-                  </button>
-                </div>
+          <!-- PETA -->
+          <section class="page-view hidden" id="mapView" data-page="map">
+            <div class="map-toolbar">
+              <div class="segmented" role="tablist" aria-label="Pilih lantai" id="floorTabs"></div>
+              <div class="chip-group" role="group" aria-label="Filter status" id="statusChips">
+                <button type="button" class="chip" data-status="all" aria-pressed="true">Semua <b id="chipAll">0</b></button>
+                <button type="button" class="chip normal" data-status="normal" aria-pressed="false"><i></i>Normal <b id="chipNormal">0</b></button>
+                <button type="button" class="chip warning" data-status="warning" aria-pressed="false"><i></i>Perhatian <b id="chipWarning">0</b></button>
+                <button type="button" class="chip offline" data-status="offline" aria-pressed="false"><i></i>Offline <b id="chipOffline">0</b></button>
               </div>
-
-              <div class="map-meta">
-                <div class="legend" aria-label="Legenda status"><span><i class="status-dot normal"></i>Normal</span><span><i class="status-dot warning"></i>Perhatian</span><span><i class="status-dot offline"></i>Offline</span></div>
-                <span id="editingHint">Pilih titik untuk melihat detail</span>
-              </div>
-
-              <div class="map-area" id="mapArea" aria-label="Denah Terminal 1 Lantai 2">
-                <div class="floor-plan-host" id="floorPlanHost">
-                  <svg class="floor-plan" viewBox="0 0 1000 660" role="img" aria-label="Denah Terminal 1 Lantai 2">
-                    <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" /></pattern></defs>
-                    <rect class="grid" width="1000" height="660" />
-                    <path class="hall" d="M85 269H915V421H85zM440 90h145v485H440z" />
-                    <path class="room" d="M112 121h230v122H112zM658 121h230v122H658zM112 447h230v114H112zM658 447h230v114H658z" />
-                    <path class="room" d="M355 121h72v122h-72zM598 121h47v122h-47zM355 447h72v114h-72zM598 447h47v114h-47z" />
-                    <path class="gate" d="M85 292H45M85 397H45M915 292h40M915 397h40" />
-                    <g class="plan-label"><text x="227" y="185">RUANG OPERASI</text><text x="773" y="185">GATE B1–B6</text><text x="227" y="507">AREA BAGASI</text><text x="773" y="507">LOUNGE &amp; KAFE</text><text x="512" y="254">KORIDOR UTAMA</text></g>
-                    <g class="door"><path d="M342 177h13a25 25 0 0 0-25 25M658 177h-13a25 25 0 0 1 25 25M342 503h13a25 25 0 0 1-25-25M658 503h-13a25 25 0 0 0 25-25" /></g>
-                  </svg>
+              <div class="map-toolbar-end">
+                <div class="layer-toggles" role="group" aria-label="Lapisan peta">
+                  <label class="toggle"><input type="checkbox" id="layerFov" checked /><span>Arah</span></label>
+                  <label class="toggle"><input type="checkbox" id="layerLabels" checked /><span>Label</span></label>
                 </div>
-                <div id="cameraLayer" class="camera-layer"></div>
-                <div class="map-scale" aria-hidden="true"><span></span>50 m</div>
+                <div class="admin-only toolbar-admin">
+                  <button class="button" id="editToggle" type="button" aria-pressed="false"><svg><use href="#i-edit"/></svg><span id="editToggleText">Edit peta</span></button>
+                  <button class="button primary" id="addCamera" type="button"><svg><use href="#i-plus"/></svg>Tambah CCTV</button>
+                </div>
               </div>
             </div>
 
-            <aside class="detail-panel" id="detailPanel" aria-live="polite">
-              <div class="detail-empty" id="emptyState">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8h11.2l5-3v14l-5-3H3.5z"/><path d="M7 8V5.5h5V8"/></svg>
-                <h2>Belum ada CCTV dipilih</h2><p>Pilih titik pada peta untuk melihat data perangkat.</p>
-              </div>
-
-              <div class="detail-content hidden" id="detailContent">
-                <div class="detail-heading">
-                  <div><p class="context" id="detailArea"></p><h2 id="detailId"></h2></div>
-                  <button class="icon-button" id="closeDetail" type="button" aria-label="Tutup detail"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-                </div>
-                <div class="device-state"><span id="detailStatus" class="status-label normal"><i></i>Normal</span><span id="detailSince"></span></div>
-                <dl class="detail-list"><div><dt>Lokasi</dt><dd id="detailLocation"></dd></div><div><dt>Perangkat</dt><dd id="detailDevice"></dd></div><div><dt>Nomor seri</dt><dd id="detailSerial"></dd></div><div><dt>Ciri fisik</dt><dd id="detailColor"></dd></div><div><dt>Dipasang</dt><dd id="detailInstalled"></dd></div><div><dt>Alamat IP</dt><dd id="detailIp"></dd></div></dl>
-
-                <section class="direction-card" aria-labelledby="directionTitle">
-                  <div class="section-heading"><div><h3 id="directionTitle">Arah kamera</h3><p>0° menghadap utara</p></div><output id="directionValue" for="directionRange">0°</output></div>
-                  <div class="compass-row">
-                    <div class="compass" aria-hidden="true"><span>U</span><span>T</span><span>S</span><span>B</span><i id="compassNeedle"></i><b></b></div>
-                    <div class="direction-controls"><input id="directionRange" type="range" min="0" max="359" step="1" value="0" disabled aria-label="Sudut arah CCTV dalam derajat" /><div class="cardinal-buttons" aria-label="Pilihan arah cepat"><button type="button" data-angle="0" disabled>U</button><button type="button" data-angle="90" disabled>T</button><button type="button" data-angle="180" disabled>S</button><button type="button" data-angle="270" disabled>B</button></div></div>
+            <div class="map-layout">
+              <div class="map-stage">
+                <div class="map-area" id="mapArea" aria-label="Denah bandara. Seret untuk menggeser, gulir untuk zoom.">
+                  <div class="map-canvas" id="mapCanvas">
+                    <div class="floor-plan-host" id="floorPlanHost"></div>
+                    <div class="camera-layer" id="cameraLayer"></div>
                   </div>
-                  <p class="direction-name" id="detailDirection"></p>
-                </section>
-
-                <section class="position-editor hidden" id="positionEditor" aria-labelledby="positionTitle">
-                  <h3 id="positionTitle">Posisi titik</h3><p>Tarik titik atau masukkan koordinat.</p>
-                  <div><label>X<input id="positionX" type="number" min="2" max="98" step="0.1" inputmode="decimal" /></label><label>Y<input id="positionY" type="number" min="2" max="98" step="0.1" inputmode="decimal" /></label></div>
-                </section>
-
-                <div class="admin-actions admin-only"><button class="button" id="editDevice" type="button">Ubah data</button><button class="button danger" id="deleteDevice" type="button">Hapus</button></div>
-                <div class="panel-actions"><button class="button danger" id="reportButton" type="button">Laporkan masalah</button><button class="button primary" id="liveView" type="button">Lihat tayangan</button></div>
+                  <div class="map-banner hidden" id="mapBanner" role="status"></div>
+                  <div class="compass-rose" title="Utara = atas denah (0°)" aria-hidden="true"><b>U</b><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18"/><path class="n" d="M20 6 24.5 20h-9z"/><path d="M20 34 24.5 20h-9z"/></svg></div>
+                  <div class="map-controls" role="group" aria-label="Kontrol peta">
+                    <button type="button" id="zoomIn" aria-label="Perbesar"><svg><use href="#i-plus"/></svg></button>
+                    <span id="zoomLevel" aria-live="off">100%</span>
+                    <button type="button" id="zoomOut" aria-label="Perkecil"><svg><use href="#i-minus"/></svg></button>
+                    <button type="button" id="zoomFit" aria-label="Tampilkan seluruh denah"><svg><use href="#i-fit"/></svg></button>
+                    <button type="button" id="mapFullscreen" aria-label="Layar penuh"><svg><use href="#i-expand"/></svg></button>
+                  </div>
+                  <div class="minimap" id="minimap" aria-label="Peta mini. Klik untuk berpindah area."><img id="minimapImage" alt="" /><div id="minimapDots"></div><i id="minimapViewport"></i></div>
+                  <div class="edit-dock hidden" id="editDock" role="toolbar" aria-label="Alat edit">
+                    <span id="saveState" class="save-state">Mode edit</span>
+                    <button type="button" class="button small" id="undoButton" disabled><svg><use href="#i-undo"/></svg>Urungkan</button>
+                    <span class="dock-hint">Seret titik untuk memindah · seret ujung kerucut untuk arah &amp; jangkauan · seret sisi untuk lebar sudut</span>
+                  </div>
+                  <div class="marker-tooltip hidden" id="markerTooltip" role="tooltip"></div>
+                </div>
               </div>
-            </aside>
+
+              <aside class="side-panel" id="sidePanel" aria-label="Panel CCTV">
+                <div class="panel-list" id="panelList">
+                  <div class="panel-head"><label class="search-field"><svg><use href="#i-search"/></svg><span class="sr-only">Cari CCTV di peta</span><input id="search" type="search" placeholder="Cari ID, lokasi, merek, IP" autocomplete="off" /></label></div>
+                  <p class="panel-meta" id="listMeta">0 CCTV di lantai ini</p>
+                  <ul class="camera-list" id="cameraList" role="listbox" aria-label="Daftar CCTV"></ul>
+                </div>
+
+                <div class="panel-detail hidden" id="panelDetail" aria-live="polite">
+                  <div class="detail-top">
+                    <button class="icon-button" id="closeDetail" type="button" aria-label="Kembali ke daftar"><svg><use href="#i-back"/></svg></button>
+                    <div class="detail-title"><p class="eyebrow" id="detailArea"></p><h2 id="detailId"></h2></div>
+                    <span id="detailStatus" class="status-label"></span>
+                  </div>
+                  <p class="detail-location" id="detailLocation"></p>
+
+                  <div class="detail-actions">
+                    <button class="button primary" id="liveView" type="button"><svg><use href="#i-play"/></svg>Tayangan</button>
+                    <button class="button" id="pingNow" type="button"><svg><use href="#i-pulse"/></svg>Ping</button>
+                    <button class="button" id="focusCamera" type="button" aria-label="Pusatkan di peta"><svg><use href="#i-target"/></svg></button>
+                    <button class="button danger-soft" id="reportButton" type="button"><svg><use href="#i-alert"/></svg>Lapor</button>
+                  </div>
+
+                  <section class="direction-card" aria-labelledby="directionTitle">
+                    <header><h3 id="directionTitle">Arah &amp; cakupan</h3><span class="muted small">0° = atas denah (utara)</span></header>
+                    <div class="direction-body">
+                      <div class="dial" id="dial" role="slider" aria-label="Arah kamera" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" tabindex="-1">
+                        <svg viewBox="-60 -60 120 120" aria-hidden="true">
+                          <circle class="dial-ring" r="54"/>
+                          <g id="dialTicks"></g>
+                          <text class="dial-letter" y="-40">U</text><text class="dial-letter" x="42" y="4">T</text><text class="dial-letter" y="47">S</text><text class="dial-letter" x="-42" y="4">B</text>
+                          <path id="dialFov" class="dial-fov"/>
+                          <line id="dialNeedle" class="dial-needle" x1="0" y1="0" x2="0" y2="-46"/>
+                          <circle class="dial-knob" id="dialKnob" r="5" cy="-46"/>
+                          <circle class="dial-hub" r="4"/>
+                        </svg>
+                      </div>
+                      <div class="direction-text">
+                        <strong id="directionName">Utara</strong>
+                        <span class="direction-deg" id="directionDeg">0°</span>
+                        <dl class="mini-dl"><div><dt>Sudut pandang</dt><dd id="fovText">90°</dd></div><div><dt>Jangkauan</dt><dd id="rangeText">Sedang</dd></div></dl>
+                      </div>
+                    </div>
+                    <div class="direction-edit hidden" id="directionEdit">
+                      <div class="angle-input"><label for="angleInput">Arah</label><input id="angleInput" type="number" min="0" max="359" step="1" /><span>°</span></div>
+                      <div class="cardinal-buttons" role="group" aria-label="Arah cepat">
+                        <button type="button" data-angle="0">U</button><button type="button" data-angle="45">TL</button><button type="button" data-angle="90">T</button><button type="button" data-angle="135">TG</button><button type="button" data-angle="180">S</button><button type="button" data-angle="225">BD</button><button type="button" data-angle="270">B</button><button type="button" data-angle="315">BL</button>
+                      </div>
+                      <label class="range-row">Sudut pandang <output id="fovOut">90°</output><input id="fovInput" type="range" min="10" max="360" step="5" /></label>
+                      <label class="range-row">Jangkauan <output id="rangeOut">1.5</output><input id="rangeInput" type="range" min="0.2" max="12" step="0.1" /></label>
+                      <div class="pos-row"><label>X %<input id="positionX" type="number" min="0" max="100" step="0.1" /></label><label>Y %<input id="positionY" type="number" min="0" max="100" step="0.1" /></label></div>
+                    </div>
+                  </section>
+
+                  <section class="ping-card" id="pingCard"></section>
+
+                  <dl class="detail-list">
+                    <div><dt>Perangkat</dt><dd id="detailDevice"></dd></div>
+                    <div><dt>Bentuk / warna</dt><dd id="detailColor"></dd></div>
+                    <div><dt>Nomor seri</dt><dd id="detailSerial" class="mono"></dd></div>
+                    <div><dt>Alamat IP</dt><dd id="detailIp" class="mono"></dd></div>
+                    <div><dt>NVR</dt><dd id="detailNvr"></dd></div>
+                    <div><dt>Dipasang</dt><dd id="detailInstalled"></dd></div>
+                    <div><dt>Diperbarui</dt><dd id="detailUpdated"></dd></div>
+                  </dl>
+                  <p class="detail-notes hidden" id="detailNotes"></p>
+
+                  <section class="detail-reports" id="detailReports"></section>
+
+                  <div class="admin-actions admin-only"><button class="button" id="editDevice" type="button"><svg><use href="#i-edit"/></svg>Ubah data</button><button class="button danger-soft" id="deleteDevice" type="button"><svg><use href="#i-trash"/></svg>Hapus</button></div>
+                </div>
+              </aside>
+            </div>
           </section>
-        </section>
 
-        <section class="page-view hidden" id="devicesView" data-page="devices">
-          <div class="content-panel">
-            <div class="view-toolbar">
-              <div class="toolbar-filters"><label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="sr-only">Cari perangkat</span><input id="deviceSearch" type="search" placeholder="Cari perangkat" /></label><label class="select-field"><span class="sr-only">Filter status perangkat</span><select id="deviceStatusFilter"><option value="all">Semua status</option><option value="normal">Normal</option><option value="warning">Perhatian</option><option value="offline">Offline</option></select></label></div>
-              <button class="button primary admin-only" id="addDeviceList" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah perangkat</button>
+          <!-- PERANGKAT -->
+          <section class="page-view hidden" id="devicesView" data-page="devices">
+            <div class="card">
+              <div class="view-toolbar">
+                <div class="filters">
+                  <label class="search-field"><svg><use href="#i-search"/></svg><span class="sr-only">Cari perangkat</span><input id="deviceSearch" type="search" placeholder="Cari ID, lokasi, merek, IP" /></label>
+                  <label class="select-field"><span class="sr-only">Status</span><select id="deviceStatusFilter"><option value="all">Semua status</option><option value="normal">Normal</option><option value="warning">Perhatian</option><option value="offline">Offline</option></select></label>
+                  <label class="select-field"><span class="sr-only">Lantai</span><select id="deviceFloorFilter"><option value="all">Semua lantai</option></select></label>
+                  <label class="select-field"><span class="sr-only">Area</span><select id="deviceAreaFilter"><option value="all">Semua area</option></select></label>
+                </div>
+                <div class="toolbar-actions"><button class="button" id="exportDevices" type="button"><svg><use href="#i-download"/></svg>Ekspor CSV</button><button class="button primary admin-only" id="addDeviceList" type="button"><svg><use href="#i-plus"/></svg>Tambah CCTV</button></div>
+              </div>
+              <div class="table-wrap"><table class="data-table"><thead><tr>
+                <th><button type="button" data-sort="id">ID</button></th><th><button type="button" data-sort="location">Lokasi</button></th><th><button type="button" data-sort="floor">Lantai</button></th><th>Perangkat</th><th><button type="button" data-sort="angle">Arah</button></th><th><button type="button" data-sort="ip">IP</button></th><th><button type="button" data-sort="ping">Ping</button></th><th><button type="button" data-sort="status">Status</button></th><th><span class="sr-only">Aksi</span></th>
+              </tr></thead><tbody id="deviceTable"></tbody></table></div>
+              <div class="list-empty hidden" id="deviceEmpty">Tidak ada perangkat yang cocok.</div>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>ID</th><th>Lokasi</th><th>Perangkat</th><th>Status</th><th>IP</th><th>Aksi</th></tr></thead><tbody id="deviceTable"></tbody></table></div>
-            <div class="list-empty hidden" id="deviceEmpty">Tidak ada perangkat yang cocok.</div>
-          </div>
-        </section>
+          </section>
 
-        <section class="page-view hidden" id="reportsView" data-page="reports">
-          <div class="content-panel">
-            <div class="view-toolbar">
-              <div class="toolbar-filters"><label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="sr-only">Cari laporan</span><input id="reportSearch" type="search" placeholder="Cari laporan" /></label><label class="select-field"><span class="sr-only">Filter status laporan</span><select id="reportStatusFilter"><option value="all">Semua status</option><option value="open">Baru</option><option value="progress">Dikerjakan</option><option value="resolved">Selesai</option></select></label></div>
-              <button class="button primary" id="newReportButton" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Buat laporan</button>
+          <!-- LAPORAN -->
+          <section class="page-view hidden" id="reportsView" data-page="reports">
+            <div class="card">
+              <div class="view-toolbar">
+                <div class="filters">
+                  <label class="search-field"><svg><use href="#i-search"/></svg><span class="sr-only">Cari laporan</span><input id="reportSearch" type="search" placeholder="Cari laporan, CCTV, pelapor" /></label>
+                  <div class="segmented small" role="group" aria-label="Status laporan" id="reportTabs">
+                    <button type="button" data-report-status="active" aria-pressed="true">Aktif</button><button type="button" data-report-status="open" aria-pressed="false">Baru</button><button type="button" data-report-status="progress" aria-pressed="false">Dikerjakan</button><button type="button" data-report-status="resolved" aria-pressed="false">Selesai</button><button type="button" data-report-status="all" aria-pressed="false">Semua</button>
+                  </div>
+                </div>
+                <button class="button primary" id="newReportButton" type="button"><svg><use href="#i-plus"/></svg>Buat laporan</button>
+              </div>
+              <div class="report-list" id="reportList"></div>
+              <div class="list-empty hidden" id="reportEmpty">Tidak ada laporan yang cocok.</div>
             </div>
-            <div class="report-list" id="reportList"></div><div class="list-empty hidden" id="reportEmpty">Tidak ada laporan yang cocok.</div>
-          </div>
-        </section>
+          </section>
 
-        <section class="page-view hidden" id="historyView" data-page="history">
-          <div class="content-panel">
-            <div class="view-toolbar"><label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="sr-only">Cari riwayat</span><input id="historySearch" type="search" placeholder="Cari aktivitas" /></label><button class="button" id="exportHistory" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M5 19h14"/></svg>Ekspor CSV</button></div>
-            <div class="timeline" id="historyList"></div><div class="list-empty hidden" id="historyEmpty">Tidak ada aktivitas yang cocok.</div>
-          </div>
-        </section>
+          <!-- RIWAYAT -->
+          <section class="page-view hidden" id="historyView" data-page="history">
+            <div class="card">
+              <div class="view-toolbar"><label class="search-field"><svg><use href="#i-search"/></svg><span class="sr-only">Cari riwayat</span><input id="historySearch" type="search" placeholder="Cari aktivitas, CCTV, petugas" /></label><button class="button" id="exportHistory" type="button"><svg><use href="#i-download"/></svg>Ekspor CSV</button></div>
+              <div class="timeline" id="historyList"></div>
+              <div class="list-empty hidden" id="historyEmpty">Tidak ada aktivitas yang cocok.</div>
+            </div>
+          </section>
 
-        <section class="page-view hidden" id="settingsView" data-page="settings">
-          <div class="settings-grid">
-            <section class="settings-card"><div class="settings-heading"><div><h2>Denah bandara</h2><p>Gunakan SVG dari Figma sebagai dasar peta.</p></div><span class="setting-state" id="mapSourceLabel">Denah bawaan</span></div><div class="dropzone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M8 8l4-4 4 4M4 14v5h16v-5"/></svg><p>Pilih file SVG. Titik CCTV tetap tersimpan terpisah.</p><label class="button primary" for="mapFile">Impor SVG</label><input class="sr-only" id="mapFile" type="file" accept="image/svg+xml,.svg" /></div><button class="button danger-text" id="resetMap" type="button">Gunakan denah bawaan</button></section>
+          <!-- PENGATURAN -->
+          <section class="page-view hidden" id="settingsView" data-page="settings">
+            <div class="settings-grid">
+              <section class="card">
+                <header class="card-head"><div><h2>Pemantauan jaringan</h2><p>Ping otomatis ke setiap CCTV dan NVR. CCTV dianggap offline setelah 2 kali gagal berturut-turut.</p></div></header>
+                <form id="monitorForm" class="form-inline"><label>Interval (detik)<input id="monitorInterval" type="number" min="15" max="3600" step="5" required /></label><button class="button primary" type="submit">Simpan</button><button class="button" type="button" id="runMonitor">Periksa sekarang</button></form>
+                <p class="muted small" id="monitorDetail">Belum berjalan.</p>
+              </section>
 
-            <section class="settings-card"><div class="settings-heading"><div><h2>Koneksi NVR</h2><p>Alamat server pada jaringan lokal bandara.</p></div><span class="setting-state" id="networkState">Belum diuji</span></div><form id="networkForm"><label>Alamat NVR<input id="nvrAddress" type="url" placeholder="http://192.168.10.20" required /></label><div class="form-row"><button class="button" id="testNetwork" type="button">Uji koneksi</button><button class="button primary" type="submit">Simpan</button></div></form></section>
+              <section class="card">
+                <header class="card-head"><div><h2>Denah lantai</h2><p>Gunakan SVG (mis. ekspor Figma/AutoCAD). Titik CCTV tidak ikut berubah.</p></div></header>
+                <div id="mapSettings" class="map-settings"></div>
+                <input class="sr-only" id="mapFile" type="file" accept="image/svg+xml,.svg" />
+              </section>
 
-            <section class="settings-card wide"><div class="settings-heading"><div><h2>Tayangan kamera</h2><p>Atur alamat IP dan URL video tiap perangkat.</p></div></div><form id="streamForm"><div class="form-grid three"><label>CCTV<select id="networkCamera" required></select></label><label>Alamat IP<input id="cameraIp" type="text" inputmode="decimal" placeholder="192.168.10.101" /></label><label>URL tayangan<input id="cameraStream" type="url" placeholder="http://nvr.local/cam01.m3u8" /></label></div><div class="form-row"><button class="button primary" type="submit">Simpan konfigurasi</button></div></form><p class="form-note">Gunakan MP4, WebM, atau HLS. Tayangan RTSP perlu dikonversi oleh NVR ke HLS atau WebRTC.</p></section>
-          </div>
-        </section>
-      </main>
+              <section class="card span-2">
+                <header class="card-head"><div><h2>Server NVR</h2><p>Daftar NVR/recorder di LAN bandara. Status diperbarui oleh monitor.</p></div><button class="button" type="button" id="addNvrRow"><svg><use href="#i-plus"/></svg>Tambah NVR</button></header>
+                <form id="nvrForm"><div class="table-wrap"><table class="data-table compact"><thead><tr><th>Nama</th><th>Alamat IP</th><th>Lokasi</th><th>Status</th><th><span class="sr-only">Aksi</span></th></tr></thead><tbody id="nvrRows"></tbody></table></div><div class="form-actions"><button class="button primary" type="submit">Simpan daftar NVR</button></div></form>
+              </section>
+
+              <section class="card span-2">
+                <header class="card-head"><div><h2>Tayangan kamera</h2><p>Alamat IP dan URL RTSP disimpan terenkripsi di server, tidak pernah dikirim ke browser.</p></div></header>
+                <form id="streamForm"><div class="form-grid three"><label>CCTV<select id="networkCamera" required></select></label><label>Alamat IP<input id="cameraIp" type="text" inputmode="decimal" placeholder="192.168.1.64" /></label><label>URL RTSP baru<input id="cameraStream" type="password" autocomplete="off" placeholder="rtsp://pengguna:sandi@192.168.1.64:554/…" /></label></div>
+                  <div class="camera-ping-status" id="cameraPingStatus" role="status" aria-live="polite"><span class="ping-indicator" aria-hidden="true"></span><div><strong id="cameraPingLabel">Belum diuji</strong><p id="cameraPingDetail">Simpan alamat IP lalu tekan Ping.</p></div></div>
+                  <div class="form-actions"><label class="check"><input type="checkbox" id="clearStream" />Hapus URL tayangan tersimpan</label><button class="button" id="pingCamera" type="button">Ping CCTV</button><button class="button primary" type="submit">Simpan konfigurasi</button></div>
+                </form>
+              </section>
+
+              <section class="card">
+                <header class="card-head"><div><h2>Area</h2><p>Pilihan area pada formulir CCTV.</p></div></header>
+                <form id="areaForm"><div class="tag-editor" id="areaTags"></div><div class="form-inline"><input id="areaInput" placeholder="Nama area baru" maxlength="80" /><button class="button" type="button" id="addArea">Tambah</button><button class="button primary" type="submit">Simpan</button></div></form>
+              </section>
+
+              <section class="card">
+                <header class="card-head"><div><h2>Akun petugas</h2><p>Admin dapat mengubah peta; operator dapat memantau dan melapor.</p></div><button class="button primary" type="button" id="addUser"><svg><use href="#i-plus"/></svg>Akun</button></header>
+                <div id="userList" class="user-list"></div>
+              </section>
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
 
+    <!-- Dialog perangkat -->
     <dialog id="deviceDialog" class="modal-wide">
-      <form id="deviceForm">
-        <button class="icon-button modal-close" type="button" data-close="deviceDialog" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-        <p class="context">Data perangkat</p><h2 id="deviceDialogTitle">Tambah CCTV</h2><input id="deviceMode" type="hidden" value="add" />
-        <div class="form-grid"><label>ID CCTV<input id="formId" required pattern="[A-Za-z0-9-]+" placeholder="CCTV-T1-025" /></label><label>Status<select id="formStatus"><option value="normal">Normal</option><option value="warning">Perhatian</option><option value="offline">Offline</option></select></label><label>Area<input id="formArea" required placeholder="Koridor utama" /></label><label>Lokasi rinci<input id="formLocation" required placeholder="Dekat Gate B3" /></label><label>Merek<input id="formBrand" required placeholder="Hikvision" /></label><label>Model<input id="formModel" required placeholder="DS-2CD2143G2-I" /></label><label>Nomor seri<input id="formSerial" required placeholder="HKV-T1-0021" /></label><label>Tanggal pemasangan<input id="formInstalled" type="date" required /></label><label>Warna<input id="formColor" placeholder="Putih" /></label><label>Bentuk<select id="formShape"><option>Dome</option><option>Bullet</option><option>PTZ</option><option>Fisheye</option></select></label><label>Alamat IP<input id="formIp" placeholder="192.168.10.101" /></label><label>URL tayangan<input id="formStream" type="url" placeholder="http://nvr.local/cam01.m3u8" /></label><label>Arah (0–359°)<input id="formAngle" type="number" min="0" max="359" required /></label><label>Posisi X (%)<input id="formX" type="number" min="2" max="98" step="0.1" required /></label><label>Posisi Y (%)<input id="formY" type="number" min="2" max="98" step="0.1" required /></label></div>
-        <div class="dialog-actions"><button type="button" class="button" data-close="deviceDialog">Batal</button><button type="submit" class="button primary">Simpan perangkat</button></div>
+      <form id="deviceForm" method="dialog">
+        <header class="dialog-head"><div><p class="eyebrow">Data perangkat</p><h2 id="deviceDialogTitle">Tambah CCTV</h2></div><button class="icon-button" type="button" data-close="deviceDialog" aria-label="Tutup"><svg><use href="#i-x"/></svg></button></header>
+        <input id="deviceMode" type="hidden" value="add" />
+        <fieldset><legend>Identitas &amp; lokasi</legend><div class="form-grid">
+          <label>ID CCTV<input id="formId" required pattern="[A-Za-z0-9][A-Za-z0-9\-]{2,31}" placeholder="CCTV-T1-025" /></label>
+          <label>Status manual<select id="formStatus"><option value="normal">Normal</option><option value="warning">Perhatian</option><option value="offline">Offline</option></select></label>
+          <label>Area<select id="formArea" required></select></label>
+          <label>Lokasi rinci<input id="formLocation" required maxlength="120" placeholder="Dekat Gate B3, sisi timur" /></label>
+          <label>Lantai<select id="formFloor"></select></label>
+          <label>NVR<select id="formNvr"><option value="">Tidak ditentukan</option></select></label>
+        </div></fieldset>
+        <fieldset><legend>Perangkat</legend><div class="form-grid">
+          <label>Merek<input id="formBrand" required maxlength="120" placeholder="Hikvision" /></label>
+          <label>Model<input id="formModel" required maxlength="120" placeholder="DS-2CD2143G2-I" /></label>
+          <label>Nomor seri<input id="formSerial" required maxlength="120" placeholder="HKV-T1-0021" /></label>
+          <label>Tanggal pemasangan<input id="formInstalled" type="date" /></label>
+          <label>Bentuk<select id="formShape"><option>Dome</option><option>Bullet</option><option>PTZ</option><option>Fisheye</option></select></label>
+          <label>Warna<input id="formColor" maxlength="120" placeholder="Putih" /></label>
+        </div></fieldset>
+        <fieldset><legend>Jaringan</legend><div class="form-grid">
+          <label>Alamat IP<input id="formIp" inputmode="decimal" placeholder="192.168.10.101" /></label>
+          <label>URL RTSP<input id="formStream" type="password" autocomplete="off" placeholder="Kosongkan bila tidak diubah" /></label>
+        </div></fieldset>
+        <fieldset><legend>Posisi &amp; arah</legend><div class="form-grid four">
+          <label>Arah (0–359°)<input id="formAngle" type="number" min="0" max="359" required /></label>
+          <label>Sudut pandang (°)<input id="formFov" type="number" min="10" max="360" step="5" required /></label>
+          <label>X (%)<input id="formX" type="number" min="0" max="100" step="0.1" required /></label>
+          <label>Y (%)<input id="formY" type="number" min="0" max="100" step="0.1" required /></label>
+        </div><p class="muted small">Lebih mudah: simpan dulu, lalu atur arah dengan menyeret kerucut di peta.</p></fieldset>
+        <label>Catatan<textarea id="formNotes" maxlength="500" placeholder="Akses tangga, kunci panel, dsb."></textarea></label>
+        <div class="dialog-actions"><button type="button" class="button" data-close="deviceDialog">Batal</button><button type="submit" class="button primary" id="deviceSubmit">Simpan perangkat</button></div>
       </form>
     </dialog>
 
     <dialog id="reportDialog">
-      <form id="reportForm"><button class="icon-button modal-close" type="button" data-close="reportDialog" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><p class="context">Laporan gangguan</p><h2 id="reportTitle">Buat laporan</h2><label>CCTV<select id="reportCamera" required></select></label><label>Masalah<select id="reportIssue"><option>Perangkat offline</option><option>Gambar tidak jelas</option><option>Arah kamera berubah</option><option>Koneksi tidak stabil</option><option>Lainnya</option></select></label><label>Prioritas<select id="reportPriority"><option value="normal">Normal</option><option value="high">Tinggi</option><option value="critical">Kritis</option></select></label><label>Catatan<textarea id="reportNote" placeholder="Tulis kondisi yang ditemukan" required></textarea></label><div class="dialog-actions"><button type="button" class="button" data-close="reportDialog">Batal</button><button type="submit" class="button primary">Kirim laporan</button></div></form>
+      <form id="reportForm" method="dialog">
+        <header class="dialog-head"><div><p class="eyebrow">Laporan gangguan</p><h2 id="reportTitle">Buat laporan</h2></div><button class="icon-button" type="button" data-close="reportDialog" aria-label="Tutup"><svg><use href="#i-x"/></svg></button></header>
+        <label>CCTV<select id="reportCamera" required></select></label>
+        <div class="form-grid"><label>Masalah<select id="reportIssue"><option>Perangkat offline</option><option>Gambar tidak jelas</option><option>Arah kamera berubah</option><option>Koneksi tidak stabil</option><option>Lainnya</option></select></label>
+        <label>Prioritas<select id="reportPriority"><option value="normal">Normal</option><option value="high">Tinggi</option><option value="critical">Kritis</option></select></label></div>
+        <label>Catatan<textarea id="reportNote" maxlength="1000" placeholder="Tulis kondisi yang ditemukan" required></textarea></label>
+        <div class="dialog-actions"><button type="button" class="button" data-close="reportDialog">Batal</button><button type="submit" class="button primary">Kirim laporan</button></div>
+      </form>
     </dialog>
 
     <dialog id="liveDialog" class="modal-live">
-      <div class="dialog-shell"><button class="icon-button modal-close" type="button" data-close="liveDialog" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><div class="live-heading"><div><p class="context">Tayangan langsung</p><h2 id="liveCameraTitle">CCTV</h2></div><span class="status-label normal" id="liveStatus"><i></i>Normal</span></div><div class="live-frame" id="liveFrame"><video id="liveVideo" controls muted playsinline></video><div class="live-fallback" id="liveFallback"><span class="live-rec"><i></i>SIMULASI</span><div class="test-grid"></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8h11.2l5-3v14l-5-3H3.5z"/><path d="M7 8V5.5h5V8"/></svg><p id="liveFallbackText">URL tayangan belum diatur</p><time id="liveClock"></time></div></div><div class="live-meta"><span id="liveLocation"></span><span id="liveIp"></span></div><div class="dialog-actions"><button class="button" id="refreshLive" type="button">Muat ulang</button><button class="button primary" id="fullscreenLive" type="button">Layar penuh</button></div></div>
+      <div class="dialog-shell">
+        <header class="dialog-head"><div><p class="eyebrow">Tayangan langsung</p><h2 id="liveCameraTitle">CCTV</h2></div><span class="status-label" id="liveStatus"></span><button class="icon-button" type="button" data-close="liveDialog" aria-label="Tutup"><svg><use href="#i-x"/></svg></button></header>
+        <div class="live-frame" id="liveFrame"><video id="liveVideo" muted playsinline></video><span class="live-badge"><i></i>LIVE</span><div class="live-fallback" id="liveFallback"><span class="live-rec"><i></i><span id="liveModeLabel">SIAGA</span></span><svg><use href="#i-cam"/></svg><p id="liveFallbackText">URL tayangan belum diatur</p><time id="liveClock"></time></div></div>
+        <div class="live-meta"><span id="liveLocation"></span><span id="liveDirection"></span><span id="liveIp" class="mono"></span></div>
+        <div class="dialog-actions"><button class="button" id="refreshLive" type="button">Muat ulang</button><button class="button primary" id="fullscreenLive" type="button">Layar penuh</button></div>
+      </div>
     </dialog>
 
     <dialog id="profileDialog">
-      <form id="profileForm"><button class="icon-button modal-close" type="button" data-close="profileDialog" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><p class="context">Akun</p><h2>Profil dan akses</h2><label>Nama<input id="accountName" required /></label><label>Email<input id="accountEmail" type="email" readonly /></label><label>Peran<input id="accountRole" readonly /></label><label>Divisi<select id="accountDivision"><option>Teknologi Informasi</option><option>Operasional</option><option>Keamanan</option><option>Teknik</option><option>Manajemen</option></select></label><div class="profile-footer"><button type="button" class="button danger" id="logoutButton">Keluar</button><div class="dialog-actions"><button type="button" class="button" data-close="profileDialog">Batal</button><button type="submit" class="button primary">Simpan profil</button></div></div></form>
+      <form id="profileForm" method="dialog">
+        <header class="dialog-head"><div><p class="eyebrow">Akun</p><h2>Profil saya</h2></div><button class="icon-button" type="button" data-close="profileDialog" aria-label="Tutup"><svg><use href="#i-x"/></svg></button></header>
+        <div class="form-grid"><label>Nama<input id="accountName" required maxlength="80" /></label><label>Divisi<input id="accountDivision" maxlength="60" list="divisionOptions" /></label><label>Email<input id="accountEmail" type="email" readonly /></label><label>Peran<input id="accountRole" readonly /></label></div>
+        <fieldset><legend>Ganti kata sandi (opsional)</legend><div class="form-grid"><label>Kata sandi saat ini<input id="currentPassword" type="password" autocomplete="current-password" /></label><label>Kata sandi baru (min. 12)<input id="newPassword" type="password" autocomplete="new-password" minlength="12" /></label></div></fieldset>
+        <div class="dialog-actions split"><button type="button" class="button danger-soft" id="logoutButton">Keluar</button><span><button type="button" class="button" data-close="profileDialog">Batal</button> <button type="submit" class="button primary">Simpan</button></span></div>
+      </form>
     </dialog>
 
-    <dialog id="confirmDialog"><form id="confirmForm"><p class="context">Konfirmasi</p><h2 id="confirmTitle">Hapus perangkat?</h2><p id="confirmMessage" class="confirm-message"></p><div class="dialog-actions"><button type="button" class="button" data-close="confirmDialog">Batal</button><button type="submit" class="button danger" id="confirmAction">Hapus</button></div></form></dialog>
+    <dialog id="userDialog">
+      <form id="userForm" method="dialog">
+        <header class="dialog-head"><div><p class="eyebrow">Akun petugas</p><h2 id="userDialogTitle">Tambah akun</h2></div><button class="icon-button" type="button" data-close="userDialog" aria-label="Tutup"><svg><use href="#i-x"/></svg></button></header>
+        <input type="hidden" id="userId" />
+        <div class="form-grid"><label>Email<input id="userEmail" type="email" required maxlength="200" /></label><label>Nama<input id="userName" maxlength="80" /></label><label>Divisi<input id="userDivision" maxlength="60" list="divisionOptions" /></label><label>Peran<select id="userRole"><option value="operator">Operator</option><option value="admin">Administrator</option></select></label><label class="span-2">Kata sandi <span id="userPasswordHint">(min. 12 karakter)</span><input id="userPassword" type="password" autocomplete="new-password" minlength="12" /></label></div>
+        <div class="dialog-actions"><button type="button" class="button" data-close="userDialog">Batal</button><button type="submit" class="button primary">Simpan akun</button></div>
+      </form>
+    </dialog>
+    <datalist id="divisionOptions"><option>Teknologi Informasi</option><option>Operasional</option><option>Keamanan</option><option>Teknik</option><option>Manajemen</option></datalist>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <dialog id="confirmDialog"><form id="confirmForm" method="dialog"><header class="dialog-head"><div><p class="eyebrow">Konfirmasi</p><h2 id="confirmTitle">Yakin?</h2></div></header><p id="confirmMessage" class="confirm-message"></p><div class="dialog-actions"><button type="button" class="button" data-close="confirmDialog">Batal</button><button type="submit" class="button danger" id="confirmAction">Lanjut</button></div></form></dialog>
+
+    <dialog id="searchDialog" class="modal-search">
+      <div class="search-shell"><label class="search-field large"><svg><use href="#i-search"/></svg><span class="sr-only">Cari CCTV</span><input id="globalSearch" type="search" placeholder="Ketik ID, lokasi, area, merek, atau IP…" autocomplete="off" /></label><ul id="globalResults" class="search-results" role="listbox"></ul><p class="muted small">↑ ↓ pilih · Enter buka di peta · Esc tutup</p></div>
+    </dialog>
+
+    <dialog id="shortcutDialog">
+      <div class="dialog-shell">
+        <header class="dialog-head"><div><p class="eyebrow">Bantuan</p><h2>Pintasan keyboard</h2></div><button class="icon-button" type="button" data-close="shortcutDialog" aria-label="Tutup"><svg><use href="#i-x"/></svg></button></header>
+        <div class="shortcut-grid">
+          <section><h3>Umum</h3><dl><div><dt><kbd>/</kbd> atau <kbd>Ctrl</kbd>+<kbd>K</kbd></dt><dd>Cari CCTV</dd></div><div><dt><kbd>1</kbd>–<kbd>6</kbd></dt><dd>Pindah halaman</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Tutup panel / batal</dd></div><div><dt><kbd>?</kbd></dt><dd>Bantuan ini</dd></div></dl></section>
+          <section><h3>Peta</h3><dl><div><dt><kbd>+</kbd> <kbd>-</kbd></dt><dd>Zoom</dd></div><div><dt><kbd>0</kbd></dt><dd>Seluruh denah</dd></div><div><dt><kbd>F</kbd></dt><dd>Layar penuh</dd></div><div><dt><kbd>G</kbd></dt><dd>Ganti lantai</dd></div><div><dt><kbd>N</kbd> / <kbd>P</kbd></dt><dd>CCTV berikut / sebelumnya</dd></div></dl></section>
+          <section><h3>Mode edit (admin)</h3><dl><div><dt><kbd>E</kbd></dt><dd>Mode edit</dd></div><div><dt><kbd>Q</kbd> <kbd>W</kbd></dt><dd>Putar arah 5° (Shift 15°)</dd></div><div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Sudut pandang</dd></div><div><dt><kbd>,</kbd> <kbd>.</kbd></dt><dd>Jangkauan</dd></div><div><dt>Panah</dt><dd>Geser titik (Shift lebih jauh)</dd></div><div><dt><kbd>Ctrl</kbd>+<kbd>Z</kbd></dt><dd>Urungkan</dd></div></dl></section>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="toast-stack" id="toastStack" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>
 </html>
