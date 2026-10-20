@@ -27,8 +27,12 @@ Format galat: `{ "error": "snake_case", "message": "Pesan Bahasa Indonesia" }`.
 | `POST` | `/api/monitor/run` | admin | Jalankan pemeriksaan jaringan sekarang |
 | `GET` | `/api/events` | user | Server-Sent Events: `cameras`, `reports`, `history`, `settings`, `users`, `monitor` |
 | `POST` | `/api/ping` | user | Ping satu IPv4 privat `{ ip }` (maks. 8 bersamaan) |
+| `GET` | `/api/streams` | user | Batas tayangan `{ maxTotal, maxPerUser, active, mine, available }` (`available` = FFmpeg ada) |
 | `POST` | `/api/streams` | user | Sesi tayangan `{ cameraCode }` → `{ playbackUrl }` |
 | `GET` / `DELETE` | `/api/streams/:token` | pemilik sesi | Putar MP4 / tutup tayangan |
+| `GET` (WebSocket) | `/api/streams/:token/ws` | pemilik sesi | MP4 terfragmentasi sebagai frame biner untuk grid View; `Origin` harus sama dengan host |
+
+Token tayangan yang tidak sedang ditonton kedaluwarsa setelah 10 menit; selama ditonton, tayangan tetap terbuka.
 
 ## Objek CCTV
 

@@ -32,8 +32,11 @@ Semua data bersama (akun, CCTV, laporan, riwayat, pengaturan NVR/area/denah, ses
 | `routes/*.js` | Handler per domain: `users`, `cameras`, `reports`, `history`, `settings`, `network` |
 | `lib/monitor.js` | Ping berkala (maks. 8 bersamaan), transisi online/offline |
 | `lib/events.js` | Hub Server-Sent Events |
-| `lib/media.js` | Ping OS dan jembatan FFmpeg |
+| `lib/media.js` | Ping OS dan jembatan FFmpeg (sesi tayangan, batas, kedaluwarsa) |
+| `lib/websocket.js` | WebSocket satu arah untuk grid View |
 | `lib/validate.js` | Validasi input CCTV |
 | `lib/http.js` | JSON, cookie, header keamanan |
 
 Setiap perubahan data memanggil `hub.broadcast(jenis)`; browser lalu memuat ulang data jenis itu saja.
+
+Tayangan tunggal diputar sebagai `<video src>` biasa (HTTP). Grid View memakai WebSocket ke Media Source Extensions, karena browser hanya membuka 6 koneksi HTTP/1.1 per server untuk semua tab: lima tayangan HTTP saja sudah membuat permintaan API lain menunggu.

@@ -46,6 +46,10 @@
       <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7.5" height="6.5" rx="1"/><rect x="13" y="4.5" width="7.5" height="6.5" rx="1"/><rect x="3.5" y="13" width="7.5" height="6.5" rx="1"/><rect x="13" y="13" width="7.5" height="6.5" rx="1"/></symbol>
+      <symbol id="i-next" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M20 4v5h-5"/></symbol>
+      <symbol id="i-window" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5H5V6h5"/></symbol>
     </svg>
 
     <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
@@ -80,6 +84,7 @@
         <nav id="primaryNavigation">
           <button class="nav-item" type="button" data-view="home"><svg><use href="#i-home"/></svg><span>Ringkasan</span></button>
           <button class="nav-item" type="button" data-view="map"><svg><use href="#i-map"/></svg><span>Peta</span></button>
+          <button class="nav-item" type="button" data-view="view"><svg><use href="#i-grid"/></svg><span>View</span></button>
           <button class="nav-item" type="button" data-view="devices"><svg><use href="#i-list"/></svg><span>Perangkat</span></button>
           <button class="nav-item" type="button" data-view="reports"><svg><use href="#i-alert"/></svg><span>Laporan</span><b class="nav-count hidden" id="reportBadge">0</b></button>
           <button class="nav-item" type="button" data-view="history"><svg><use href="#i-clock"/></svg><span>Riwayat</span></button>
@@ -242,6 +247,38 @@
                 </div>
               </aside>
             </div>
+          </section>
+
+          <!-- VIEW -->
+          <section class="page-view hidden" id="wallView" data-page="view">
+            <div class="wall-head" id="wallHead">
+              <div class="wall-toolbar" id="wallToolbar">
+                <div class="wall-controls">
+                  <div class="segmented small" id="wallLayouts" role="group" aria-label="Jumlah layar">
+                    <button type="button" data-layout="1" aria-pressed="false">1</button>
+                    <button type="button" data-layout="4" aria-pressed="true">4</button>
+                    <button type="button" data-layout="9" aria-pressed="false">9</button>
+                    <button type="button" data-layout="16" aria-pressed="false">16</button>
+                    <button type="button" data-layout="custom" aria-pressed="false">Kustom</button>
+                  </div>
+                  <span class="wall-custom hidden" id="wallCustom">
+                    <label><span class="sr-only">Kolom</span><input id="wallCols" type="number" min="1" max="6" value="2" /></label>
+                    <span aria-hidden="true">×</span>
+                    <label><span class="sr-only">Baris</span><input id="wallRows" type="number" min="1" max="6" value="2" /></label>
+                  </span>
+                  <label class="select-field"><span class="sr-only">Lantai</span><select id="wallFloor"><option value="all">Semua lantai</option><option value="gf">Lantai dasar</option><option value="ff">Lantai 1</option></select></label>
+                  <label class="select-field"><span class="sr-only">Ganti halaman otomatis</span><select id="wallRotate"><option value="0">Rotasi mati</option><option value="15">Rotasi 15 dtk</option><option value="30">Rotasi 30 dtk</option><option value="60">Rotasi 60 dtk</option></select></label>
+                </div>
+                <div class="wall-controls">
+                  <div class="wall-pager"><button class="icon-button" id="wallPrev" type="button" aria-label="Halaman sebelumnya"><svg><use href="#i-back"/></svg></button><span id="wallPage" class="mono">1/1</span><button class="icon-button" id="wallNext" type="button" aria-label="Halaman berikutnya"><svg><use href="#i-next"/></svg></button></div>
+                  <button class="button" id="wallReload" type="button"><svg><use href="#i-refresh"/></svg>Muat ulang</button>
+                  <button class="button" id="wallFullscreen" type="button"><svg><use href="#i-expand"/></svg>Layar penuh</button>
+                  <button class="button primary wall-popout" id="wallPopout" type="button"><svg><use href="#i-window"/></svg>Jendela baru</button>
+                </div>
+              </div>
+              <p class="wall-note" id="wallNote"></p>
+            </div>
+            <div class="wall-grid" id="wallGrid"></div>
           </section>
 
           <!-- PERANGKAT -->
@@ -417,8 +454,9 @@
       <div class="dialog-shell">
         <header class="dialog-head"><div><p class="eyebrow">Bantuan</p><h2>Pintasan keyboard</h2></div><button class="icon-button" type="button" data-close="shortcutDialog" aria-label="Tutup"><svg><use href="#i-x"/></svg></button></header>
         <div class="shortcut-grid">
-          <section><h3>Umum</h3><dl><div><dt><kbd>/</kbd> atau <kbd>Ctrl</kbd>+<kbd>K</kbd></dt><dd>Cari CCTV</dd></div><div><dt><kbd>1</kbd>–<kbd>6</kbd></dt><dd>Pindah halaman</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Tutup panel / batal</dd></div><div><dt><kbd>?</kbd></dt><dd>Bantuan ini</dd></div></dl></section>
+          <section><h3>Umum</h3><dl><div><dt><kbd>/</kbd> atau <kbd>Ctrl</kbd>+<kbd>K</kbd></dt><dd>Cari CCTV</dd></div><div><dt><kbd>1</kbd>–<kbd>6</kbd></dt><dd>Pindah halaman</dd></div><div><dt><kbd>7</kbd></dt><dd>View (grid tayangan)</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Tutup panel / batal</dd></div><div><dt><kbd>?</kbd></dt><dd>Bantuan ini</dd></div></dl></section>
           <section><h3>Peta</h3><dl><div><dt><kbd>+</kbd> <kbd>-</kbd></dt><dd>Zoom</dd></div><div><dt><kbd>0</kbd></dt><dd>Seluruh denah</dd></div><div><dt><kbd>F</kbd></dt><dd>Layar penuh</dd></div><div><dt><kbd>G</kbd></dt><dd>Ganti lantai</dd></div><div><dt><kbd>N</kbd> / <kbd>P</kbd></dt><dd>CCTV berikut / sebelumnya</dd></div></dl></section>
+          <section><h3>View</h3><dl><div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Halaman sebelumnya / berikutnya</dd></div><div><dt><kbd>F</kbd></dt><dd>Layar penuh</dd></div><div><dt>Klik ganda</dt><dd>Perbesar satu tayangan</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Kembali ke grid</dd></div></dl></section>
           <section><h3>Mode edit (admin)</h3><dl><div><dt><kbd>E</kbd></dt><dd>Mode edit</dd></div><div><dt><kbd>Q</kbd> <kbd>W</kbd></dt><dd>Putar arah 5° (Shift 15°)</dd></div><div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Sudut pandang</dd></div><div><dt><kbd>,</kbd> <kbd>.</kbd></dt><dd>Jangkauan</dd></div><div><dt>Panah</dt><dd>Geser titik (Shift lebih jauh)</dd></div><div><dt><kbd>Ctrl</kbd>+<kbd>Z</kbd></dt><dd>Urungkan</dd></div></dl></section>
         </div>
       </div>

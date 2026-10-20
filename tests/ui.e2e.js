@@ -106,3 +106,27 @@ test('cardinal buttons and keyboard shortcuts change direction', { skip: !findBr
   assert.equal((await camera(CAMERAS[0])).angle, 275);
   await page.eval("document.querySelector('#editToggle').click()");
 });
+
+test('View shows a video grid whose size can be chosen', { skip: !findBrowser() && 'Edge/Chrome tidak ditemukan' }, async () => {
+  await page.eval("localStorage.removeItem('cctv-map-prefs-v1')");
+  await page.goto(`${base}/#view`, 3000);
+  await page.waitFor("document.querySelectorAll('#wallGrid .wall-tile').length === 4");
+  await page.eval("document.querySelector('#wallLayouts [data-layout=\"9\"]').click()");
+  await page.waitFor("document.querySelectorAll('#wallGrid .wall-tile').length === 9");
+  await page.eval("document.querySelector('#wallLayouts [data-layout=\"custom\"]').click()");
+  await page.eval("const cols = document.querySelector('#wallCols'); cols.value = '4'; cols.dispatchEvent(new Event('change'))");
+  await page.waitFor("document.querySelectorAll('#wallGrid .wall-tile').length === 12");
+  assert.equal(await page.eval("getComputedStyle(document.querySelector('#wallGrid')).gridTemplateColumns.split(' ').length"), 4);
+  if (shots) await page.screenshot(path.join(shots, 'e2e-view.png'));
+  assert.deepEqual(page.errors, []);
+});
+
+test('the standalone View window shows only the grid', { skip: !findBrowser() && 'Edge/Chrome tidak ditemukan' }, async () => {
+  await page.goto(`${base}/?display=wall#view`, 3000);
+  await page.waitFor("document.documentElement.classList.contains('wall-display') && document.querySelectorAll('#wallGrid .wall-tile').length > 0");
+  assert.equal(await page.eval("getComputedStyle(document.querySelector('.rail')).display"), 'none');
+  assert.equal(await page.eval("getComputedStyle(document.querySelector('.topbar')).display"), 'none');
+  await page.waitFor("document.title.includes('View | CCTV Map')");
+  if (shots) await page.screenshot(path.join(shots, 'e2e-view-window.png'));
+  assert.deepEqual(page.errors, []);
+});

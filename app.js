@@ -17,6 +17,8 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 16;
 const SAVE_DELAY_MS = 500;
 const PREFS_KEY = 'cctv-map-prefs-v1';
+// "?display=wall" is the standalone View window: only the video grid, meant for a second monitor.
+const WALL_DISPLAY = new URLSearchParams(location.search).get('display') === 'wall';
 
 const state = {
   user: null,
@@ -66,7 +68,7 @@ const cameraLayer = $('#cameraLayer');
 /* ---------------------------------------------------------------- utils */
 
 function loadPrefs() {
-  const defaults = { theme: 'dark', sound: true, fov: true, labels: true, floor: 'gf' };
+  const defaults = { theme: 'dark', sound: true, fov: true, labels: true, floor: 'gf', wallLayout: '4', wallCols: 2, wallRows: 2, wallFloor: 'all', wallRotate: 0, wallOrder: [] };
   try {
     return { ...defaults, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
   } catch {
@@ -206,7 +208,8 @@ function toast(message, { title = '', kind = 'info', action = null, duration = 4
 }
 
 function beep(kind = 'alarm') {
-  if (!prefs.sound) return;
+  // The main window already sounds the alarm; a View window next to it would double it.
+  if (!prefs.sound || WALL_DISPLAY) return;
   try {
     audioContext = audioContext || new AudioContext();
     const tones = kind === 'alarm' ? [880, 660, 880] : [520, 780];
@@ -1233,6 +1236,7 @@ function renderCameraViews() {
   renderDeviceTable();
   renderCameraSelects();
   updateBadges();
+  renderWall();
 }
 
 /* ---------------------------------------------------------------- top bar */
@@ -1244,7 +1248,7 @@ function updateBadges() {
   $('#reportBadge').classList.toggle('hidden', activeReports === 0);
   $('#alarmPill').classList.toggle('hidden', offline === 0);
   $('#alarmText').textContent = `${offline} CCTV offline`;
-  document.title = `${offline ? `(${offline}) ` : ''}CCTV Map | Ruang Kontrol`;
+  document.title = `${offline ? `(${offline}) ` : ''}${WALL_DISPLAY ? 'View | CCTV Map' : 'CCTV Map | Ruang Kontrol'}`;
 }
 
 function renderMonitor() {
@@ -1511,8 +1515,10 @@ const PAGE_META = {
   reports: ['Operasional', 'Laporan gangguan'],
   history: ['Audit', 'Riwayat aktivitas'],
   settings: ['Administrator', 'Pengaturan sistem'],
+  view: ['Pemantauan', 'View'],
 };
-const VIEW_KEYS = ['home', 'map', 'devices', 'reports', 'history', 'settings'];
+// Shortcut keys 1–7 follow this order; View came later, so it is 7 rather than its place in the rail.
+const VIEW_KEYS = ['home', 'map', 'devices', 'reports', 'history', 'settings', 'view'];
 
 function showView(view) {
   if (view === 'settings' && !isAdmin()) return toast('Pengaturan hanya untuk administrator.', { kind: 'error' });
@@ -1520,6 +1526,7 @@ function showView(view) {
     setPlacing(false);
     flushSaves();
   }
+  if (state.view === 'view' && view !== 'view') stopWall();
   state.view = view;
   $$('.page-view').forEach((page) => page.classList.toggle('hidden', page.dataset.page !== view));
   $$('.nav-item[data-view]').forEach((button) => {
@@ -1533,6 +1540,7 @@ function showView(view) {
   if (view === 'reports') renderReports();
   if (view === 'history') renderHistory();
   if (view === 'settings') { renderSettings(); renderUsers(); }
+  if (view === 'view') enterWall();
   try { history.replaceState(null, '', `#${view}`); } catch { /* ignore */ }
 }
 
@@ -1714,6 +1722,469 @@ function closeLive() {
   stopLivePlayback();
 }
 
+/* ---------------------------------------------------------------- View (video wall) */
+
+const WALL_PRESETS = { 1: [1, 1], 4: [2, 2], 9: [3, 3], 16: [4, 4] };
+const WALL_MAX_SIDE = 6;
+const WALL_RETRY_MS = [5000, 15000, 30000, 60000];
+// Tile states: empty (no camera) · idle (waiting to start) · connecting · playing · error (retrying or failed)
+// · over (slot beyond the per-user stream limit) · limit (server refused; waits for Muat ulang) · unavailable (no FFmpeg).
+const wall = { page: 0, solo: null, limits: null, tiles: [], startTimer: null, rotateTimer: null, chromeTimer: null };
+
+function wallSize() {
+  if (prefs.wallLayout === 'custom') {
+    const side = (value) => Math.min(WALL_MAX_SIDE, Math.max(1, Math.round(Number(value)) || 1));
+    return [side(prefs.wallCols), side(prefs.wallRows)];
+  }
+  return WALL_PRESETS[prefs.wallLayout] || WALL_PRESETS[4];
+}
+
+function wallCameras() {
+  const order = new Map((prefs.wallOrder || []).map((id, index) => [id, index]));
+  return state.cameras
+    .filter((camera) => camera.hasStream && (prefs.wallFloor === 'all' || camera.floor === prefs.wallFloor))
+    .sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity) || a.id.localeCompare(b.id));
+}
+
+function createWallTile(slot) {
+  const element = document.createElement('div');
+  element.className = 'wall-tile';
+  element.dataset.slot = slot;
+  element.innerHTML = `<video muted playsinline></video>
+    <div class="wall-fallback"><svg><use href="#i-cam"/></svg><p></p></div>
+    <div class="wall-label hidden"><i class="status-dot"></i><b class="mono"></b><span></span></div>
+    <div class="wall-actions hidden">
+      <label><span class="sr-only">Ganti CCTV di layar ${slot + 1}</span><select data-wall="assign"></select></label>
+      <button class="wall-action" type="button" data-wall="reload" title="Muat ulang tayangan" aria-label="Muat ulang tayangan"><svg><use href="#i-refresh"/></svg></button>
+      <button class="wall-action" type="button" data-wall="solo" title="Perbesar (klik ganda)" aria-label="Perbesar tayangan"><svg><use href="#i-expand"/></svg></button>
+    </div>`;
+  const tile = { slot, element, video: $('video', element), cameraId: null, state: 'empty', playbackUrl: null, player: null, requestId: 0, retry: 0, retryTimer: null };
+  setTileState(tile, 'empty');
+  return tile;
+}
+
+function setTileState(tile, tileState, message = '') {
+  tile.state = tileState;
+  tile.element.dataset.state = tileState;
+  $('.wall-fallback p', tile.element).textContent = message;
+}
+
+function joinBytes(chunks) {
+  const bytes = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.length, 0));
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
+}
+
+// Media Source needs the codec before the first append; read it from the MP4 init segment.
+function mp4Codec(bytes) {
+  const hex = (value) => value.toString(16).padStart(2, '0');
+  for (let index = 0; index + 7 < bytes.length; index += 1) {
+    if (bytes[index + 1] !== 0x76 || bytes[index + 2] !== 0x63 || bytes[index + 3] !== 0x43) continue;
+    // 'avcC' is followed by version, profile, compatibility and level.
+    if (bytes[index] === 0x61) return `avc1.${hex(bytes[index + 5])}${hex(bytes[index + 6])}${hex(bytes[index + 7])}`;
+    // 'hvcC': an H.265 camera passed through with STREAM_VIDEO_CODEC=copy.
+    if (bytes[index] === 0x68) return 'hvc1.1.6.L120.90';
+  }
+  return null;
+}
+
+// Plays a stream token over a WebSocket into Media Source Extensions. Unlike <video src>, WebSockets do not
+// use up the browser's six HTTP connections per server, so a large wall still leaves room for the app itself.
+function streamOverSocket(video, playbackUrl, onFail) {
+  const media = new MediaSource();
+  const queue = [];
+  let head = [];
+  let buffer = null;
+  let socket = null;
+  let stopped = false;
+
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    if (!socket) return;
+    socket.onclose = null;
+    socket.onmessage = null;
+    socket.close();
+  };
+  const fail = (message, retry = true) => {
+    if (stopped) return;
+    stop();
+    onFail(message, retry);
+  };
+  const append = () => {
+    if (!buffer || buffer.updating || !queue.length || media.readyState !== 'open') return;
+    try {
+      buffer.appendBuffer(joinBytes(queue.splice(0)));
+    } catch {
+      fail('Tayangan tidak dapat diputar.');
+    }
+  };
+  const keepLive = () => {
+    // A WebSocket message may already have started the next append before this updateend ran.
+    if (buffer.updating) return;
+    const ranges = buffer.buffered;
+    if (ranges.length) {
+      const start = ranges.start(0);
+      const end = ranges.end(ranges.length - 1);
+      // Stay near the live edge: a background tab or a busy PC would otherwise drift behind.
+      if (video.currentTime < start || end - video.currentTime > 3) video.currentTime = Math.max(start, end - 0.5);
+      // Drop video older than 30 s so a wall that runs all day never fills the buffer.
+      if (video.currentTime - start > 30) {
+        buffer.remove(start, video.currentTime - 10);
+        return;
+      }
+    }
+    append();
+  };
+
+  media.addEventListener('sourceopen', () => {
+    URL.revokeObjectURL(video.src);
+    if (stopped) return;
+    socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${playbackUrl}/ws`);
+    socket.binaryType = 'arraybuffer';
+    socket.onmessage = (event) => {
+      const chunk = new Uint8Array(event.data);
+      if (buffer) {
+        queue.push(chunk);
+        return append();
+      }
+      head.push(chunk);
+      const bytes = joinBytes(head);
+      const codec = mp4Codec(bytes);
+      if (!codec) return bytes.length > 2_000_000 ? fail('Format tayangan tidak dikenali.', false) : undefined;
+      const type = `video/mp4; codecs="${codec}"`;
+      if (!MediaSource.isTypeSupported(type)) return fail(`Browser ini tidak dapat memutar codec kamera (${codec}). Hapus STREAM_VIDEO_CODEC=copy agar server mengubahnya ke H.264.`, false);
+      buffer = media.addSourceBuffer(type);
+      buffer.addEventListener('updateend', keepLive);
+      head = null;
+      queue.push(bytes);
+      return append();
+    };
+    socket.onclose = () => fail('Tayangan terputus.');
+  }, { once: true });
+  video.src = URL.createObjectURL(media);
+  return { stop };
+}
+
+function releaseTile(tile) {
+  tile.requestId += 1;
+  clearTimeout(tile.retryTimer);
+  tile.retryTimer = null;
+  tile.player?.stop();
+  tile.player = null;
+  const { video } = tile;
+  video.onloadeddata = null;
+  video.onerror = null;
+  video.onended = null;
+  if (video.getAttribute('src')) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+  if (tile.playbackUrl) fetch(tile.playbackUrl, { method: 'DELETE', keepalive: true }).catch(() => {});
+  tile.playbackUrl = null;
+}
+
+function parkTile(tile, tileState, message) {
+  if (tile.state !== tileState) releaseTile(tile);
+  setTileState(tile, tileState, message);
+}
+
+function paintWallTile(tile, camera, optionsKey, options) {
+  const label = $('.wall-label', tile.element);
+  const actions = $('.wall-actions', tile.element);
+  tile.element.classList.toggle('offline', camera?.status === 'offline');
+  label.classList.toggle('hidden', !camera);
+  actions.classList.toggle('hidden', !camera);
+  if (!camera) return;
+  $('.status-dot', label).className = `status-dot ${camera.status}`;
+  $('b', label).textContent = camera.id;
+  $('span', label).textContent = [camera.location || camera.area, FLOORS[camera.floor]].filter(Boolean).join(' · ');
+  label.title = statusText(camera.status);
+  const select = $('select', actions);
+  // Rebuilding the list would close it under the operator's pointer, so only do it when cameras change.
+  if (select.dataset.key !== optionsKey) {
+    select.innerHTML = options;
+    select.dataset.key = optionsKey;
+  }
+  select.value = camera.id;
+}
+
+function wallNote(count, slots) {
+  const limits = wall.limits;
+  if (!count) {
+    const where = prefs.wallFloor === 'all' ? '' : ` di ${FLOORS[prefs.wallFloor].toLowerCase()}`;
+    return `Belum ada CCTV${where} yang memiliki URL tayangan RTSP. ${isAdmin() ? 'Atur di Pengaturan › Tayangan kamera.' : 'Minta administrator mengaturnya.'}`;
+  }
+  if (limits && !limits.available) return `${count} CCTV siap ditayangkan, tetapi komponen tayangan RTSP (FFmpeg) belum terpasang di server.`;
+  let text = `${count} CCTV dengan tayangan${limits ? ` · maks ${limits.maxPerUser} tayangan bersamaan per pengguna` : ''}.`;
+  if (limits && slots > limits.maxPerUser) {
+    text += isAdmin()
+      ? ` Untuk grid ${slots} layar, naikkan MAX_STREAMS_PER_USER dan MAX_STREAMS di .env server.`
+      : ' Minta administrator menaikkan batas tayangan.';
+  }
+  return text;
+}
+
+function syncWallControls() {
+  const [cols, rows] = wallSize();
+  $$('#wallLayouts button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.layout === String(prefs.wallLayout))));
+  $('#wallCustom').classList.toggle('hidden', prefs.wallLayout !== 'custom');
+  if (document.activeElement !== $('#wallCols')) $('#wallCols').value = cols;
+  if (document.activeElement !== $('#wallRows')) $('#wallRows').value = rows;
+  $('#wallFloor').value = prefs.wallFloor;
+  $('#wallRotate').value = String(prefs.wallRotate || 0);
+}
+
+function renderWall() {
+  if (state.view !== 'view' || !state.user) return;
+  const [cols, rows] = wallSize();
+  const slots = cols * rows;
+  const list = wallCameras();
+  const pages = Math.max(1, Math.ceil(list.length / slots));
+  wall.page = Math.min(Math.max(0, wall.page), pages - 1);
+  const visible = list.slice(wall.page * slots, (wall.page + 1) * slots);
+  const grid = $('#wallGrid');
+  grid.style.setProperty('--cols', cols);
+  grid.style.setProperty('--rows', rows);
+  while (wall.tiles.length > slots) {
+    const tile = wall.tiles.pop();
+    releaseTile(tile);
+    tile.element.remove();
+  }
+  while (wall.tiles.length < slots) {
+    const tile = createWallTile(wall.tiles.length);
+    wall.tiles.push(tile);
+    grid.append(tile.element);
+  }
+  if (wall.solo !== null && !visible[wall.solo]) wall.solo = null;
+
+  const limits = wall.limits;
+  const optionsKey = list.map((camera) => camera.id).join('|');
+  const options = list.map((camera) => `<option value="${escapeHtml(camera.id)}">${escapeHtml(camera.id)} · ${escapeHtml(camera.location || camera.area)}</option>`).join('');
+  wall.tiles.forEach((tile, index) => {
+    const camera = visible[index] || null;
+    if (tile.cameraId !== (camera?.id ?? null)) {
+      releaseTile(tile);
+      tile.cameraId = camera?.id ?? null;
+      tile.retry = 0;
+      setTileState(tile, 'empty');
+    }
+    paintWallTile(tile, camera, optionsKey, options);
+    if (!camera) return;
+    if (limits && !limits.available) return parkTile(tile, 'unavailable', 'Komponen tayangan RTSP (FFmpeg) belum tersedia di server.');
+    if (limits && index >= limits.maxPerUser) return parkTile(tile, 'over', `Melebihi batas ${limits.maxPerUser} tayangan bersamaan per pengguna.`);
+    if (['empty', 'over', 'unavailable'].includes(tile.state)) setTileState(tile, 'idle', limits ? 'Menunggu giliran…' : 'Memeriksa server tayangan…');
+  });
+
+  syncWallControls();
+  $('#wallView').classList.toggle('is-empty', !list.length);
+  $('#wallPage').textContent = `${wall.page + 1}/${pages}`;
+  $('#wallPrev').disabled = pages < 2;
+  $('#wallNext').disabled = pages < 2;
+  $('#wallNote').textContent = wallNote(list.length, slots);
+  renderWallSolo();
+  scheduleWallStreams();
+}
+
+function scheduleWallStreams() {
+  clearTimeout(wall.startTimer);
+  if (state.view !== 'view' || !wall.limits?.available) return;
+  const next = wall.tiles.find((tile) => tile.cameraId && tile.state === 'idle');
+  if (!next) return;
+  // Stagger start-up so the server does not spawn every FFmpeg process at the same moment.
+  wall.startTimer = setTimeout(() => {
+    startWallTile(next);
+    scheduleWallStreams();
+  }, 150);
+}
+
+async function startWallTile(tile) {
+  const camera = cameraById(tile.cameraId);
+  if (!camera) return;
+  releaseTile(tile);
+  const requestId = tile.requestId;
+  setTileState(tile, 'connecting', 'Menghubungkan…');
+  let playbackUrl;
+  try {
+    ({ playbackUrl } = await api('/api/streams', { method: 'POST', body: { cameraCode: camera.id } }));
+  } catch (error) {
+    if (requestId !== tile.requestId) return;
+    if (error.code === 'stream_limit') return setTileState(tile, 'limit', error.message);
+    const permanent = ['camera_not_found', 'stream_not_configured', 'invalid_rtsp_url', 'stream_secret_invalid', 'authentication_required'].includes(error.code);
+    return failWallTile(tile, error.message, !permanent);
+  }
+  if (requestId !== tile.requestId || state.view !== 'view') {
+    fetch(playbackUrl, { method: 'DELETE', keepalive: true }).catch(() => {});
+    return;
+  }
+  tile.playbackUrl = playbackUrl;
+  const { video } = tile;
+  video.onloadeddata = () => {
+    if (requestId !== tile.requestId) return;
+    tile.retry = 0;
+    setTileState(tile, 'playing');
+    video.play().catch(() => {});
+  };
+  video.onerror = () => {
+    if (requestId === tile.requestId) failWallTile(tile, 'Tayangan terputus.', true);
+  };
+  if ('MediaSource' in window) {
+    tile.player = streamOverSocket(video, playbackUrl, (message, retry) => {
+      if (requestId === tile.requestId) failWallTile(tile, message, retry);
+    });
+    return;
+  }
+  // Without Media Source Extensions fall back to plain HTTP, which fits only about five screens per browser.
+  video.onended = video.onerror;
+  video.src = playbackUrl;
+  video.load();
+}
+
+function failWallTile(tile, message, retry) {
+  releaseTile(tile);
+  if (!retry) return setTileState(tile, 'error', message);
+  const delay = WALL_RETRY_MS[Math.min(tile.retry, WALL_RETRY_MS.length - 1)];
+  tile.retry += 1;
+  setTileState(tile, 'error', `${message} Mencoba lagi dalam ${Math.round(delay / 1000)} dtk…`);
+  const requestId = tile.requestId;
+  tile.retryTimer = setTimeout(async () => {
+    const info = await api('/api/streams').catch(() => null);
+    if (requestId !== tile.requestId || state.view !== 'view') return;
+    if (info) wall.limits = info;
+    // At the limit, starting again would push out this user's oldest stream (another tile), so wait for Muat ulang.
+    if (info && (info.mine >= info.maxPerUser || info.active >= info.maxTotal)) {
+      return setTileState(tile, 'limit', 'Batas tayangan bersamaan tercapai. Tutup tayangan lain lalu tekan Muat ulang.');
+    }
+    setTileState(tile, 'idle', 'Menghubungkan ulang…');
+    scheduleWallStreams();
+  }, delay);
+}
+
+function stopWall() {
+  clearTimeout(wall.startTimer);
+  clearInterval(wall.rotateTimer);
+  wall.rotateTimer = null;
+  for (const tile of wall.tiles) {
+    releaseTile(tile);
+    tile.cameraId = null;
+    setTileState(tile, 'empty');
+  }
+}
+
+async function refreshWallLimits() {
+  try {
+    wall.limits = await api('/api/streams');
+  } catch (error) {
+    wall.limits = null;
+    reportError(error);
+  }
+}
+
+async function enterWall() {
+  renderWall();
+  await refreshWallLimits();
+  if (state.view !== 'view') return;
+  renderWall();
+  setWallRotate();
+}
+
+async function reloadWall() {
+  for (const tile of wall.tiles) {
+    releaseTile(tile);
+    tile.retry = 0;
+    setTileState(tile, 'empty');
+  }
+  await refreshWallLimits();
+  renderWall();
+}
+
+function goWallPage(delta) {
+  const [cols, rows] = wallSize();
+  const pages = Math.max(1, Math.ceil(wallCameras().length / (cols * rows)));
+  if (pages < 2) return;
+  wall.page = (wall.page + delta + pages) % pages;
+  wall.solo = null;
+  renderWall();
+}
+
+function setWallRotate() {
+  clearInterval(wall.rotateTimer);
+  wall.rotateTimer = null;
+  const seconds = Number(prefs.wallRotate) || 0;
+  if (!seconds || state.view !== 'view') return;
+  wall.rotateTimer = setInterval(() => {
+    if (wall.solo === null) goWallPage(1);
+  }, seconds * 1000);
+}
+
+function setWallLayout(layout, cols = prefs.wallCols, rows = prefs.wallRows) {
+  const [oldCols, oldRows] = wallSize();
+  Object.assign(prefs, { wallLayout: layout, wallCols: cols, wallRows: rows });
+  savePrefs();
+  const [newCols, newRows] = wallSize();
+  // Keep the first camera of the current page on screen.
+  wall.page = Math.floor((wall.page * oldCols * oldRows) / (newCols * newRows));
+  wall.solo = null;
+  renderWall();
+}
+
+function assignWallSlot(slot, cameraId) {
+  const ids = wallCameras().map((camera) => camera.id);
+  const [cols, rows] = wallSize();
+  const position = wall.page * cols * rows + slot;
+  const from = ids.indexOf(cameraId);
+  if (from < 0 || position >= ids.length || from === position) return;
+  [ids[position], ids[from]] = [ids[from], ids[position]];
+  prefs.wallOrder = [...ids, ...(prefs.wallOrder || []).filter((id) => !ids.includes(id))];
+  savePrefs();
+  renderWall();
+}
+
+function setWallSolo(slot) {
+  wall.solo = slot;
+  renderWallSolo();
+}
+
+function renderWallSolo() {
+  $('#wallGrid').classList.toggle('has-solo', wall.solo !== null);
+  wall.tiles.forEach((tile) => tile.element.classList.toggle('solo', tile.slot === wall.solo));
+}
+
+function toggleWallFullscreen() {
+  if (document.fullscreenElement) return document.exitFullscreen?.();
+  return $('#wallGrid').requestFullscreen?.().catch(() => toast('Layar penuh tidak diizinkan browser.', { kind: 'error' }));
+}
+
+function openWallWindow() {
+  const popup = window.open('/?display=wall#view', 'cctv-view', 'popup=yes,width=1280,height=760');
+  if (!popup) return toast('Browser memblokir jendela baru. Izinkan pop-up untuk alamat ini.', { kind: 'error' });
+  // Both windows share this user's stream limit, so only the new window keeps the tiles.
+  showView('map');
+  return toast('Geser jendela View ke monitor kedua, lalu tekan F untuk layar penuh.', { title: 'View dibuka di jendela baru' });
+}
+
+function initWallDisplay() {
+  document.documentElement.classList.add('wall-display');
+  // The toolbar hides itself so the grid can fill the screen; moving the mouse brings it back.
+  const reveal = () => {
+    document.documentElement.classList.add('wall-chrome');
+    clearTimeout(wall.chromeTimer);
+    wall.chromeTimer = setTimeout(function hide() {
+      if ($('#wallHead').matches(':hover, :focus-within')) wall.chromeTimer = setTimeout(hide, 1000);
+      else document.documentElement.classList.remove('wall-chrome');
+    }, 3000);
+  };
+  document.addEventListener('pointermove', reveal);
+  reveal();
+}
+
+if (WALL_DISPLAY) initWallDisplay();
+
 /* ---------------------------------------------------------------- session */
 
 function setAuthError(message = '') {
@@ -1729,7 +2200,7 @@ async function enterApp(user) {
   $('#authScreen').classList.add('hidden');
   $('#appShell').classList.remove('hidden');
   renderProfile();
-  const hashView = location.hash.replace('#', '');
+  const hashView = WALL_DISPLAY ? 'view' : location.hash.replace('#', '');
   showView(VIEW_KEYS.includes(hashView) && (hashView !== 'settings' || isAdmin()) ? hashView : 'home');
   setSync(false, 'Menyambung…');
   try {
@@ -1768,6 +2239,7 @@ function resetSessionState() {
   setEditMode(false);
   setPlacing(false);
   closeLive();
+  stopWall();
   $$('dialog[open]').forEach((dialog) => dialog.close());
   Object.assign(state, { user: null, cameras: [], reports: [], history: [], users: [], selectedId: null, loaded: false });
   pending.clear();
@@ -2359,6 +2831,53 @@ $('#confirmForm').addEventListener('submit', (event) => {
 // Live
 $('#refreshLive').addEventListener('click', loadLiveStream);
 $('#fullscreenLive').addEventListener('click', () => $('#liveFrame').requestFullscreen?.());
+
+// View (video wall)
+$$('#wallLayouts button').forEach((button) => button.addEventListener('click', () => {
+  if (button.dataset.layout === 'custom') setWallLayout('custom', ...wallSize());
+  else setWallLayout(button.dataset.layout);
+}));
+['#wallCols', '#wallRows'].forEach((selector) => $(selector).addEventListener('change', () => {
+  const side = (value) => Math.min(WALL_MAX_SIDE, Math.max(1, Math.round(Number(value)) || 1));
+  setWallLayout('custom', side($('#wallCols').value), side($('#wallRows').value));
+}));
+$('#wallFloor').addEventListener('change', (event) => {
+  prefs.wallFloor = event.target.value;
+  savePrefs();
+  wall.page = 0;
+  wall.solo = null;
+  renderWall();
+});
+$('#wallRotate').addEventListener('change', (event) => {
+  prefs.wallRotate = Number(event.target.value) || 0;
+  savePrefs();
+  setWallRotate();
+});
+$('#wallPrev').addEventListener('click', () => goWallPage(-1));
+$('#wallNext').addEventListener('click', () => goWallPage(1));
+$('#wallReload').addEventListener('click', reloadWall);
+$('#wallFullscreen').addEventListener('click', toggleWallFullscreen);
+$('#wallPopout').addEventListener('click', openWallWindow);
+$('#wallGrid').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-wall]');
+  if (!button) return;
+  const tile = wall.tiles[Number(button.closest('.wall-tile').dataset.slot)];
+  if (button.dataset.wall === 'solo') return setWallSolo(wall.solo === tile.slot ? null : tile.slot);
+  releaseTile(tile);
+  tile.retry = 0;
+  setTileState(tile, 'idle', 'Menghubungkan ulang…');
+  return scheduleWallStreams();
+});
+$('#wallGrid').addEventListener('dblclick', (event) => {
+  const element = event.target.closest('.wall-tile');
+  if (!element || event.target.closest('.wall-actions') || element.dataset.state === 'empty') return;
+  const slot = Number(element.dataset.slot);
+  setWallSolo(wall.solo === slot ? null : slot);
+});
+$('#wallGrid').addEventListener('change', (event) => {
+  const select = event.target.closest('select[data-wall="assign"]');
+  if (select) assignWallSlot(Number(select.closest('.wall-tile').dataset.slot), select.value);
+});
 $('#liveDialog').addEventListener('close', closeLive);
 
 // Global search
@@ -2446,7 +2965,14 @@ document.addEventListener('keydown', (event) => {
   const key = event.key;
   if (key === '/') { event.preventDefault(); return openSearch(); }
   if (key === '?') return $('#shortcutDialog').showModal();
-  if (/^[1-6]$/.test(key)) return showView(VIEW_KEYS[Number(key) - 1]);
+  if (/^[1-7]$/.test(key) && !WALL_DISPLAY) return showView(VIEW_KEYS[Number(key) - 1]);
+  if (state.view === 'view') {
+    if (key === 'ArrowRight' || key === 'PageDown') return goWallPage(1);
+    if (key === 'ArrowLeft' || key === 'PageUp') return goWallPage(-1);
+    if (key.toLowerCase() === 'f') return toggleWallFullscreen();
+    if (key === 'Escape' && wall.solo !== null) return setWallSolo(null);
+    return;
+  }
   if (key === 'Escape') {
     if (state.placing) return setPlacing(false);
     if (state.selectedId) return closeDetail();
@@ -2482,6 +3008,8 @@ document.addEventListener('keydown', (event) => {
 window.addEventListener('beforeunload', () => {
   if (pending.size) flushSaves();
 });
+// Free this window's server stream slots when it closes (DELETE is sent with keepalive).
+window.addEventListener('pagehide', stopWall);
 
 // Dial tick marks
 $('#dialTicks').innerHTML = Array.from({ length: 24 }, (_, index) => {

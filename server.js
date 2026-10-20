@@ -9,6 +9,7 @@ const { createMonitor } = require('./lib/monitor');
 const { createRateLimiter } = require('./lib/rate-limit');
 const { getSessionUser, pruneExpiredSessions } = require('./lib/sessions');
 const { isPrivateIpv4, isValidIpv4, parseRtspUrl } = require('./lib/validate');
+const { rejectUpgrade } = require('./lib/websocket');
 const cameras = require('./routes/cameras');
 const history = require('./routes/history');
 const network = require('./routes/network');
@@ -55,6 +56,7 @@ const ROUTES = [
   ['POST', '/api/monitor/run', 'admin', network.monitorRun],
   ['GET', '/api/events', 'user', network.events],
   ['POST', '/api/ping', 'user', network.ping],
+  ['GET', '/api/streams', 'user', network.streamInfo],
   ['POST', '/api/streams', 'user', network.createStream],
   ['GET', /^\/api\/streams\/([a-f0-9]{32})$/, 'user', network.stream],
   ['DELETE', /^\/api\/streams\/([a-f0-9]{32})$/, 'user', network.stream],
@@ -87,6 +89,16 @@ function serveAsset(request, response, route) {
   });
 }
 
+function sameOrigin(request) {
+  const origin = request.headers.origin;
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === request.headers.host;
+  } catch {
+    return false;
+  }
+}
+
 function createServer({
   ping = runPing,
   logError = console.error,
@@ -96,9 +108,10 @@ function createServer({
   rtspEncryptionKey = null,
   monitorIntervalSec = 60,
   maxStreams = 8,
+  maxStreamsPerUser = 4,
 } = {}) {
   const hub = createEventHub();
-  const streams = createStreamManager({ startStream, logError, maxTotal: maxStreams });
+  const streams = createStreamManager({ startStream, logError, maxTotal: maxStreams, maxPerUser: maxStreamsPerUser });
   const monitor = createMonitor({ pool, ping, hub, logError, intervalSec: monitorIntervalSec });
   const deps = {
     pool,
@@ -157,6 +170,21 @@ function createServer({
       return response.destroy();
     });
   });
+  // WebSocket variant of /api/streams/<token> for the View wall (see lib/websocket.js).
+  server.on('upgrade', (request, socket) => {
+    socket.on('error', () => socket.destroy());
+    const route = new URL(request.url || '/', 'http://localhost').pathname;
+    const match = /^\/api\/streams\/([a-f0-9]{32})\/ws$/.exec(route);
+    if (!match || !pool) return rejectUpgrade(socket, 404);
+    // Browsers always send Origin here; refuse another site's page riding the session cookie.
+    if (!sameOrigin(request)) return rejectUpgrade(socket, 403);
+    return getSessionUser(pool, sessionToken(request))
+      .then((user) => (user ? streams.handleSocket(request, socket, match[1], user) : rejectUpgrade(socket, 401)))
+      .catch((error) => {
+        logError('Tayangan WebSocket gagal:', error.message);
+        rejectUpgrade(socket, 503);
+      });
+  });
   server.on('close', () => {
     monitor.stop();
     streams.closeAll();
@@ -186,6 +214,7 @@ if (require.main === module) {
       rtspEncryptionKey: config.rtspEncryptionKey,
       monitorIntervalSec: Number(process.env.MONITOR_INTERVAL_SEC) || 60,
       maxStreams: Number(process.env.MAX_STREAMS) || 8,
+      maxStreamsPerUser: Number(process.env.MAX_STREAMS_PER_USER) || 4,
     });
     server.listen(port, '0.0.0.0', async () => {
       console.log(`CCTV Grid Map: http://127.0.0.1:${port}`);
